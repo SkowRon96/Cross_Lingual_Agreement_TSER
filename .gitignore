@@ -1,0 +1,51 @@
+# ============================================================
+# Cross-Lingual Agreement (TSER) — repository ignore rules
+# ============================================================
+
+# ----- Large assets excluded from the repo (see instruction §7) -----
+# Datasets (nEMO, CAMEO, ... — cloned HF repos with their own .git + LFS)
+datasets/
+# Model weights (own models extracted from old_projects + downloaded checkpoints)
+models/
+# Legacy projects (read-only source material; must never be modified by us)
+old_projects/
+
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+.ipynb_checkpoints/
+
+# ----- Caches -----
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.cache/
+# Hugging Face / torch caches if ever placed inside the project
+.hf_cache/
+.torch_cache/
+
+# ----- OS -----
+.DS_Store
+Thumbs.db
+
+# ----- IDE / tooling -----
+.claude/settings.local.json
+.vscode/*
+# ...but keep the shared debug configurations (instruction §4: launch mainly in VS Code debug)
+!.vscode/launch.json
+!.vscode/settings.json
+
+# ----- Results: track structure and final article-ready artifacts,
+#       ignore heavy raw intermediates (add explicit patterns as they appear) -----
+results/**/*.npz
+results/**/*.pkl
+results/**/tmp/

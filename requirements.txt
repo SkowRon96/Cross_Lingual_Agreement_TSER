@@ -1,0 +1,41 @@
+# ============================================================
+# Cross-Lingual Agreement (TSER) — Python dependencies
+# Python 3.12 · Apple M1 (CPU / MPS only, no CUDA)
+#
+# PROVISIONAL skeleton — versions are intentionally unpinned here and will be
+# pinned (with a lockfile / exact ==versions) during the planning/implementation
+# phase, once concrete pipelines and model backends are fixed. Do not treat this
+# as the final environment.
+# ============================================================
+
+# ----- Config & validation (instruction §4: use Pydantic) -----
+pydantic
+pydantic-settings
+
+# ----- Core scientific stack -----
+numpy
+pandas
+scipy
+scikit-learn
+
+# ----- Statistics (kappa, bootstrap, McNemar, chi-square) -----
+statsmodels
+
+# ----- Deep learning (CPU / Apple MPS builds) -----
+torch
+transformers
+huggingface-hub
+datasets
+safetensors
+accelerate
+
+# ----- Audio (speech emotion recognition) -----
+librosa
+soundfile
+
+# ----- Plotting (article-ready tables, figures, confusion matrices) -----
+matplotlib
+seaborn
+
+# ----- Utilities -----
+tqdm
