@@ -18,6 +18,8 @@ def decode_audio_bytes(raw: bytes) -> tuple[np.ndarray, int]:
 def _read_parquet_audio_bytes(parquet_path, row_index: int) -> bytes:
     pf = pq.ParquetFile(parquet_path)
     remaining = row_index
+    # Iterate through row groups, decrementing remaining until we find the group
+    # containing the target row, then index into that group's audio column.
     for rg in range(pf.num_row_groups):
         n = pf.metadata.row_group(rg).num_rows
         if remaining < n:
