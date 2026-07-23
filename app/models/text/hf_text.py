@@ -20,7 +20,9 @@ def _device() -> str:
 class HFTextModel:
     modality = "text"
 
-    def __init__(self, model_id: str, hf_repo: str, cache_dir: Path | None = None):
+    def __init__(self, model_id: str, hf_repo: str, cache_dir: Path | None = None,
+                 id2label_override: dict | None = None,
+                 label_overrides: dict | None = None):
         self.model_id = model_id
         self.hf_repo = hf_repo
         cd = str(cache_dir) if cache_dir else None
@@ -28,10 +30,21 @@ class HFTextModel:
         self.model = AutoModelForSequenceClassification.from_pretrained(hf_repo, cache_dir=cd)
         self.device = _device()
         self.model.to(self.device).eval()
-        self.native_labels = native_labels_from_id2label(self.model.config.id2label)
-        self.mapper = LabelMapper(self.native_labels)
+        self._overridden = id2label_override is not None
+        if id2label_override is not None:
+            n = self.model.config.num_labels
+            if len(id2label_override) != n:
+                raise ValueError(
+                    f"id2label_override has {len(id2label_override)} entries but model has {n} labels")
+            self.native_labels = native_labels_from_id2label(id2label_override)
+        else:
+            self.native_labels = native_labels_from_id2label(self.model.config.id2label)
+        self.label_overrides = label_overrides
+        self.mapper = LabelMapper(self.native_labels, overrides=label_overrides)
 
     def config_signature(self) -> str:
+        if self._overridden:
+            return f"{self.hf_repo}@labels={','.join(self.native_labels)}"
         return self.hf_repo
 
     def predict_batch(self, samples: list[Sample]) -> list[Prediction]:
