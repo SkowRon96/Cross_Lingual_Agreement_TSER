@@ -9,6 +9,16 @@
       "args": ["-v"],
       "console": "integratedTerminal",
       "justMyCode": false
+    },
+    {
+      "name": "Train LSTM (retrain, old_projects, TF venv)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/old_projects/chatgpt-pl-emotion-recognition/main_newest.py",
+      "cwd": "${workspaceFolder}/old_projects/chatgpt-pl-emotion-recognition",
+      "python": "${workspaceFolder}/.venv-tf/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": false
     }
   ]
 }
