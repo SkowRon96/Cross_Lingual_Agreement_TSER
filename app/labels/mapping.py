@@ -11,6 +11,7 @@ MASTER_MAP: dict[str, Emotion] = {
     "angry": Emotion.ANGER,
     "disgust": Emotion.DISGUST,
     "fear": Emotion.FEAR,
+    "fearful": Emotion.FEAR,
     "happiness": Emotion.HAPPINESS,
     "happy": Emotion.HAPPINESS,
     "joy": Emotion.HAPPINESS,
