@@ -8,6 +8,16 @@ from app.config.emotions import Emotion
 from app.data.schema import AudioRef, Sample
 
 
+def _opt_out(v):
+    """Optional str -> cell value: None stays None (parquet null), '' stays ''."""
+    return v  # write the value as-is; None becomes a parquet null
+
+
+def _opt_in(v):
+    """Cell value -> optional str: null/NaN -> None, everything else -> str(v)."""
+    return None if pd.isna(v) else str(v)
+
+
 def samples_to_frame(samples: list[Sample]) -> pd.DataFrame:
     rows = []
     for s in samples:
@@ -24,10 +34,10 @@ def samples_to_frame(samples: list[Sample]) -> pd.DataFrame:
             "video_path": str(s.video_path) if s.video_path else "",
             "gold_raw": s.gold_raw,
             "gold": s.gold.value if s.gold is not None else "",
-            "speaker_id": s.speaker_id or "",
-            "gender": s.gender or "",
-            "age": s.age or "",
-            "intensity": s.intensity or "",
+            "speaker_id": _opt_out(s.speaker_id),
+            "gender": _opt_out(s.gender),
+            "age": _opt_out(s.age),
+            "intensity": _opt_out(s.intensity),
         })
     return pd.DataFrame(rows)
 
@@ -60,9 +70,9 @@ def read_index(path: Path) -> list[Sample]:
             video_path=Path(row["video_path"]) if row["video_path"] else None,
             gold_raw=row["gold_raw"],
             gold=Emotion(row["gold"]) if row["gold"] else None,
-            speaker_id=row["speaker_id"] or None,
-            gender=row["gender"] or None,
-            age=row["age"] or None,
-            intensity=row["intensity"] or None,
+            speaker_id=_opt_in(row["speaker_id"]),
+            gender=_opt_in(row["gender"]),
+            age=_opt_in(row["age"]),
+            intensity=_opt_in(row["intensity"]),
         ))
     return out
