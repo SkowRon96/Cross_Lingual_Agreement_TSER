@@ -24,3 +24,13 @@ def test_write_table_emits_four_formats(tmp_path):
     tables.write_table(df, stem)
     for ext in ("csv", "md", "tex", "png"):
         assert (tmp_path / f"kappa.{ext}").exists()
+
+
+def test_report_study_writes_artifacts(tmp_path):
+    from app.analysis.results import write_json
+    from app.report.run import report_study
+    b = _bundle()
+    write_json(b, tmp_path / "analysis" / "study1" / "bundle.json")
+    paths = report_study(1, results_root=tmp_path)
+    assert any(p.suffix == ".png" for p in paths)
+    assert (tmp_path / "tables" / "study1" / "kappa.csv").exists()

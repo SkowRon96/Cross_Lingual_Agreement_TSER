@@ -48,6 +48,16 @@ def _analyze(args) -> int:
     return 0
 
 
+def _report(args) -> int:
+    from app.report.run import report_study
+    settings = Settings()
+    results_root = Path(args.results_root) if args.results_root else settings.results_root
+    paths = report_study(args.study, results_root=results_root)
+    print(f"report study {args.study}: wrote {len(paths)} artefacts -> "
+          f"{results_root / 'tables'} + {results_root / 'figures'}")
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -71,6 +81,10 @@ def main(argv=None) -> int:
     an.add_argument("--results-root", default=None)
     an.add_argument("--index-dir", default=None)
     an.set_defaults(func=_analyze)
+    rp = sub.add_parser("report", help="Render figures + tables from results/analysis")
+    rp.add_argument("--study", type=int, required=True)
+    rp.add_argument("--results-root", default=None)
+    rp.set_defaults(func=_report)
     args = parser.parse_args(argv)
     return args.func(args)
 
