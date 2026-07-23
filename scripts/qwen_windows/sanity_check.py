@@ -19,8 +19,9 @@ import torch
 from transformers import AutoProcessor, Qwen2AudioForConditionalGeneration
 
 from run_qwen import (
-    TARGET_SR,
+    audio_kwarg,
     build_prompt,
+    classify,
     iter_cameo,
     iter_nemo,
     iter_ravdess,
@@ -50,6 +51,8 @@ def main():
         args.model, torch_dtype=torch.float16, device_map="cuda").eval()
     prompt = build_prompt()
     print("prompt:", prompt)
+    print(f"passing audio to the processor via '{audio_kwarg(processor)}=' "
+          "(must NOT be silently ignored)")
     print("-" * 100)
     print(f"{'sample_id':45s} | {'raw_response':30s} | parsed")
     print("-" * 100)
@@ -69,15 +72,7 @@ def main():
         print(f"# source: {label}")
         for sid, corpus, audio_bytes, wav_path in itertools.islice(source, args.n):
             audio = load_audio(audio_bytes, wav_path)
-            conversation = [{"role": "user", "content": [
-                {"type": "audio", "audio": audio},
-                {"type": "text", "text": prompt}]}]
-            text = processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=False)
-            inputs = processor(text=text, audios=[audio], sampling_rate=TARGET_SR,
-                               return_tensors="pt", padding=True).to("cuda")
-            with torch.no_grad():
-                out = model.generate(**inputs, max_new_tokens=8, do_sample=False)
-            reply = processor.batch_decode(out[:, inputs.input_ids.shape[1]:], skip_special_tokens=True)[0]
+            reply = classify(processor, model, audio, prompt)
             parsed = parse_response(reply) or "(abstain)"
             print(f"{sid:45s} | {reply.strip()[:30]:30s} | {parsed}")
     print("-" * 100)

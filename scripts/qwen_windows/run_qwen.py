@@ -11,6 +11,7 @@ Resumable: re-run to continue; already-predicted sample_ids are skipped.
 """
 import argparse
 import glob
+import inspect
 import io
 import os
 import re
@@ -96,6 +97,41 @@ def load_audio(audio_bytes, wav_path):
     return np.ascontiguousarray(data, dtype="float32")
 
 
+_AUDIO_KW_CACHE: dict[str, str] = {}
+
+
+def audio_kwarg(processor) -> str:
+    """Which keyword the installed transformers uses to pass audio to the processor.
+
+    Older Qwen2-Audio releases took `audios=`; newer standardized processors take
+    `audio=`. Passing the wrong one is SILENTLY IGNORED (transformers only warns),
+    so the model would classify with no audio at all. Detect it from the signature.
+    """
+    key = type(processor).__name__
+    if key not in _AUDIO_KW_CACHE:
+        try:
+            params = inspect.signature(processor.__call__).parameters
+        except (TypeError, ValueError):
+            params = {}
+        # prefer 'audios' only if the signature explicitly names it; else 'audio'
+        _AUDIO_KW_CACHE[key] = "audios" if "audios" in params else "audio"
+    return _AUDIO_KW_CACHE[key]
+
+
+def classify(processor, model, audio, prompt, device="cuda") -> str:
+    """Run one clip through Qwen2-Audio and return the raw decoded answer."""
+    conversation = [{"role": "user", "content": [
+        {"type": "audio", "audio": audio},
+        {"type": "text", "text": prompt}]}]
+    text = processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=False)
+    kw = {audio_kwarg(processor): [audio]}
+    inputs = processor(text=text, sampling_rate=TARGET_SR, return_tensors="pt",
+                       padding=True, **kw).to(device)
+    with torch.no_grad():
+        out = model.generate(**inputs, max_new_tokens=8, do_sample=False)
+    return processor.batch_decode(out[:, inputs.input_ids.shape[1]:], skip_special_tokens=True)[0]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cameo-dir", default=None)
@@ -114,6 +150,7 @@ def main():
     model = Qwen2AudioForConditionalGeneration.from_pretrained(
         args.model, torch_dtype=torch.float16, device_map="cuda").eval()
     prompt = build_prompt()
+    print(f"passing audio to the processor via '{audio_kwarg(processor)}='")
 
     sources = []
     if args.cameo_dir:
@@ -129,15 +166,7 @@ def main():
             if sid in done:
                 continue
             audio = load_audio(audio_bytes, wav_path)
-            conversation = [{"role": "user", "content": [
-                {"type": "audio", "audio": audio},
-                {"type": "text", "text": prompt}]}]
-            text = processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=False)
-            inputs = processor(text=text, audios=[audio], sampling_rate=TARGET_SR,
-                               return_tensors="pt", padding=True).to("cuda")
-            with torch.no_grad():
-                out = model.generate(**inputs, max_new_tokens=8, do_sample=False)
-            reply = processor.batch_decode(out[:, inputs.input_ids.shape[1]:], skip_special_tokens=True)[0]
+            reply = classify(processor, model, audio, prompt)
             buffer.append({"sample_id": sid, "corpus": corpus,
                            "raw_response": reply, "pred": parse_response(reply)})
             n += 1
