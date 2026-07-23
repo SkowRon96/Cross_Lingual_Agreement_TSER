@@ -24,9 +24,9 @@ Zmierzyć **zgodność międzymodalną tekst↔mowa** w rozpoznawaniu emocji, wi
 ## 2. Kluczowe decyzje (podjęte w brainstormingu)
 
 1. **Zakres:** pełny (Badanie 1 + 2), termin elastyczny.
-2. **Przestrzeń emocji:** Ekman-6 + neutral (7): `anger, disgust, fear, joy, sadness, surprise, neutral`.
-3. **Etykiety spoza Ekmana:** scalamy uznane (`calm→neutral`, `excitement/enthusiasm→joy`), resztę odrzucamy (DROP) z raportowaniem liczb.
-4. **Autorski model tekstowy (LSTM):** odtwarzamy (retrening) — word2vec `nkjp+wiki-forms-all-300-cbow-ns.txt` dostarczony przez użytkownika.
+2. **Przestrzeń emocji:** Ekman-6 + neutral (7): `anger, disgust, fear, happiness, sadness, surprise, neutral`.
+3. **Etykiety spoza Ekmana:** scalamy uznane (`calm→neutral`, `excitement/enthusiasm→happiness`), resztę odrzucamy (DROP) z raportowaniem liczb.
+4. **Autorski model tekstowy (LSTM):** **inferencja z zapisanych wag** — `Models/test.h5` jest w rzeczywistości wytrenowanym 7-klasowym modelem emocji (`Dense(7)`+`sigmoid`, zweryfikowane 2026-07-23 z konfiguracji h5), a NIE modelem sentymentu. **Retraining zbędny.** word2vec potrzebny co najwyżej do rekonstrukcji/weryfikacji tokenizera (patrz §8).
 5. **Środowisko:** Mac M1, 16 GB unified, CPU/MPS (bez GPU). Backend audio-LLM **wymienny** + mikro-benchmark przed pełnym runem.
 6. **RAVDESS twarz:** pobieranie per-aktor → ekstrakcja klatek → kasowanie wideo (oszczędność dysku).
 7. **Architektura:** Podejście A — potok etapów z typowanym, cache'owanym magazynem predykcji.
@@ -49,12 +49,12 @@ Zmierzyć **zgodność międzymodalną tekst↔mowa** w rozpoznawaniu emocji, wi
 | anger/angry | anger |
 | disgust | disgust |
 | fear | fear |
-| happiness/happy/joy | joy |
+| happiness/happy/joy | happiness |
 | sadness/sad | sadness |
 | surprise/surprised | surprise |
 | neutral | neutral |
 | calm | neutral *(scalenie)* |
-| excitement/enthusiasm | joy *(scalenie)* |
+| excitement/enthusiasm | happiness *(scalenie)* |
 | none of them | neutral *(gdy model nie ma osobnego neutral)* / DROP *(gdy ma)* |
 | hope, pride, contempt, frustration, gratitude, love, sarcasm, anxiety, apology, assertiveness, concern, encouragement, poker | **DROP** |
 
@@ -64,14 +64,14 @@ Zmierzyć **zgodność międzymodalną tekst↔mowa** w rozpoznawaniu emocji, wi
 
 | model_id | model | pokrywa | brakuje | extra → |
 |---|---|---|---|---|
-| `pl_text_lstm` | autorski LSTM (retrening) | wszystkie 7 | — | — |
-| `pl_text_roberta6` | visegradmedia Emotion_RoBERTa_polish6 | anger,fear,disgust,sadness,joy,neutral | **surprise** | none-of-them→neutral |
-| `xlmr_pooled10` | poltextlab xlm-roberta pooled-emotions10-v3 | anger,fear,disgust,sadness,joy,neutral | **surprise** | hope,pride→DROP; enthusiasm→joy; none-of-them→DROP |
+| `pl_text_lstm` | autorski LSTM (wagi `test.h5`, inferencja) | wszystkie 7 | — | — |
+| `pl_text_roberta6` | visegradmedia Emotion_RoBERTa_polish6 | anger,fear,disgust,sadness,happiness,neutral | **surprise** | none-of-them→neutral |
+| `xlmr_pooled10` | poltextlab xlm-roberta pooled-emotions10-v3 | anger,fear,disgust,sadness,happiness,neutral | **surprise** | hope,pride→DROP; enthusiasm→happiness; none-of-them→DROP |
 | `mling_tabularis` | tabularisai multilingual-emotion | wszystkie 7 | — | contempt,frustration,gratitude,love→DROP |
 | `en_text_hartmann` | j-hartmann distilroberta | wszystkie 7 | — | — |
-| `en_speech_iemocap` | speechbrain wav2vec2 IEMOCAP | anger,joy,sadness,neutral | **fear,disgust,surprise** | — |
+| `en_speech_iemocap` | speechbrain wav2vec2 IEMOCAP | anger,happiness,sadness,neutral | **fear,disgust,surprise** | — |
 | `speech_cnn_tf` (RAVDESS-8) | autorski parallel CNN-Transformer | wszystkie 7 | — | calm→neutral |
-| `speech_cnn_tf` (nEMO-6) | autorski parallel CNN-Transformer | anger,fear,joy,sadness,surprise,neutral | disgust *(nEMO go nie ma)* | — |
+| `speech_cnn_tf` (nEMO-6) | autorski parallel CNN-Transformer | anger,fear,happiness,sadness,surprise,neutral | disgust *(nEMO go nie ma)* | — |
 | `speech_zeroshot` | Qwen2-Audio zero-shot | wszystkie 7 (prompt) | — | parse-fail→abstain |
 | `en_face_vit` | trpakov vit-face-expression | wszystkie 7 | — | — |
 
@@ -149,7 +149,7 @@ Modele leaky/zawężone → pełna macierz + kontrola rzetelności, nie nagłów
 Deterministyczna regeneracja z `results/analysis/*.json`. **Jednolity styl:** wspólny moduł (czcionki/DPI/siatka) + **stała colorblind-safe paleta-per-emocja** i stała kolejność klas wszędzie.
 
 - Rysunki: **PDF (wektor) + PNG 300 DPI** → `results/figures/study{N}/`.
-- Tabele: **LaTeX + CSV + Markdown** → `results/tables/study{N}/`.
+- Tabele: **LaTeX + CSV + Markdown + PNG** (render obrazkowy tej samej tabeli, spójny styl) → `results/tables/study{N}/`.
 - Artefakty: macierze pomyłek per model; tabele κ z bootstrap CI + pełna macierz tekst×mowa; Fleiss' κ (RAVDESS); tabela PL vs EN + istotność; konflikty (rozkład per emocja, „która bliżej gold", scatter confidence); Badanie 2 — κ dla 8 języków z wyróżnionym PL + scatter typologia/zasobność.
 
 ## 6. Struktura `app/`, CLI, `launch.json`
@@ -162,7 +162,7 @@ app/
   labels/  canonical.py · mapping.py · mapper.py
   data/    schema.py · ingest.py · loaders/{nemo,cameo,ravdess}.py · audio.py · video.py
   models/  base.py · registry.py
-           text/{hf_text.py, lstm/{architecture,train,wrapper}.py}
+           text/{hf_text.py, lstm/{architecture,wrapper}.py}   # train.py opcjonalny — wagi test.h5 już są
            speech/{architectures.py, cnn_transformer.py, speechbrain_iemocap.py,
                    zeroshot/{base,qwen_mlx,qwen_api,prompt}.py}
            face/vit_face.py
@@ -176,7 +176,7 @@ tests/     # mapowanie etykiet, matematyka κ, wykluczenia, schema ingestu
 **CLI:**
 ```
 python -m app.cli ingest    --corpus nemo|cameo|ravdess
-python -m app.cli train-lstm
+python -m app.cli train-lstm                                  # OPCJONALNY — wagi test.h5 już istnieją
 python -m app.cli predict   --study 1 --corpus nemo --model all|<id>
 python -m app.cli analyze   --study 1
 python -m app.cli report    --study 1
@@ -201,3 +201,5 @@ python -m app.cli benchmark --model speech_zeroshot --n 20
 2. **StandardScaler** autorskiego modelu mowy — strategia normalizacji (dopasowanie na eval vs per-próbka).
 3. **Zakres pobrania RAVDESS z Zenodo** (Video_Speech per-aktor) + pipeline klatek/detekcji twarzy.
 4. **none-of-them / poker** — potwierdzone: none-of-them→neutral (bez osobnego neutral) / DROP (z neutral); poker→DROP.
+5. **Tokenizer autorskiego LSTM** — `finalwordindex.pkl` (76 KB) wygląda na zbyt mały wobec słownika modelu (`input_dim=294182`). Zweryfikować dopasowanie do `test.h5`; w razie niezgodności zrekonstruować `word_index` ze słownika word2vec (deterministycznie).
+6. **Retraining / poprawa autorskiego LSTM — opcja awaryjna, TYLKO na sam koniec.** Domyślnie używamy zapisanych wag (`test.h5`, §2 pkt 4). Jeśli końcowe wyniki modelu tekstowego PL okażą się słabe (np. baseline accuracy/F1 znacząco odstający od pozostałych modeli tekstowych), dopiero wtedy rozważamy retrening/dostrojenie LSTM: word2vec (mamy) + dane chatbota + odbudowa tokenizera. Nie robimy tego na starcie — to ostatni krok, uruchamiany warunkowo po ocenie wyników.
