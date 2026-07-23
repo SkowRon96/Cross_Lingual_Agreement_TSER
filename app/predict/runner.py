@@ -1,5 +1,5 @@
 """Prediction runner: cache-aware, resumable batched inference into the store."""
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
 
 from app.data.schema import Sample
 from app.models.base import EmotionModel
@@ -18,9 +18,10 @@ def run_prediction(samples: list[Sample], model: EmotionModel, store: Prediction
     target_ids = [s.sample_id for s in samples]
     if not force and store.is_cached(study, corpus, model.model_id, cfg, target_ids):
         return "cached"
-    done = set() if force else store.existing_sample_ids(study, corpus, model.model_id)
+    resume = (not force) and store.stored_config_hash(study, corpus, model.model_id) == cfg
+    done = store.existing_sample_ids(study, corpus, model.model_id) if resume else set()
     todo = [s for s in samples if s.sample_id not in done]
-    first = not done  # force or empty store -> the first write (re)creates the file
+    first = not done  # force, config change, or empty store -> first write (re)creates the file
     for batch in chunked(todo, batch_size):
         preds = model.predict_batch(batch)
         if first:

@@ -60,3 +60,18 @@ def test_force_recomputes(tmp_path):
     m = StubModel()
     assert run_prediction(_samples(3), m, store, 1, "c", force=True) == "done"
     assert m.calls == 3  # recomputed despite cache
+
+
+def test_config_change_recomputes(tmp_path):
+    store = PredictionStore(tmp_path)
+    m1 = StubModel()  # config "cfg-v1"
+    run_prediction(_samples(3), m1, store, 1, "c")
+
+    class StubModelV2(StubModel):
+        def config_signature(self):
+            return "cfg-v2"
+
+    m2 = StubModelV2()
+    assert run_prediction(_samples(3), m2, store, 1, "c") == "done"
+    assert m2.calls == 3  # recomputed under new config, not skipped
+    assert store.stored_config_hash(1, "c", "stub") == "cfg-v2"
