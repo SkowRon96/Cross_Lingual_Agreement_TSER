@@ -45,8 +45,9 @@ class SpeechBrainIEMOCAP:
                 import torchaudio
                 wav = torchaudio.functional.resample(wav, sr, _TARGET_SR)
             out_prob, _, _, _ = self.classifier.classify_batch(wav.unsqueeze(0))
-            probs = out_prob.squeeze(0).exp().cpu().numpy()  # log-probs -> probs
-            probs = (probs / probs.sum()).astype("float64")
+            # classify_batch already returns normalized probabilities (not log-probs).
+            probs = out_prob.squeeze(0).cpu().numpy().astype("float64")
+            probs = probs / probs.sum()   # harmless safety renorm
             out.append(to_prediction(s.sample_id, self.model_id, self.modality,
                                      self.native_labels, probs.tolist(), self.mapper))
         return out

@@ -26,3 +26,4 @@ def test_speechbrain_predicts_on_real_audio():
     [pred] = m.predict_batch([s])
     assert pred.pred in {Emotion.ANGER, Emotion.HAPPINESS, Emotion.SADNESS, Emotion.NEUTRAL}
     assert abs(sum(pred.scores.values()) - 1.0) < 1e-5
+    assert pred.confidence > 0.8   # real model is confident on this clip; guards against the .exp() flattening bug

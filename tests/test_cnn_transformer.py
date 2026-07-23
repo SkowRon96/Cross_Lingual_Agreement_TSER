@@ -4,6 +4,7 @@ import pytest
 import torch
 from pathlib import Path
 from app.config.emotions import Emotion
+from app.data.schema import AudioRef, Sample
 from app.models.speech.architectures import ParallelModel
 
 
@@ -26,11 +27,13 @@ def test_ravdess_weights_load_and_predict_on_real_audio():
     m = build_model("speech_cnn_tf_ravdess")
     assert m.modality == "speech"
     assert Emotion.NEUTRAL in m.mapper.supported  # calm+neutral both -> neutral
-    # a real RAVDESS wav
-    wav = sorted(glob.glob("datasets/RAVDESS/Audio_Speech_Actors_01-24/Actor_01/03-*.wav"))[0]
-    s = Sample(sample_id="RAVDESS:probe", studies=[1], corpus="RAVDESS", language="en",
-               text="Kids are talking by the door", audio=AudioRef(wav_path=Path(wav)),
-               gold_raw="neutral", gold=Emotion.NEUTRAL)
-    [pred] = m.predict_batch([s])   # single-sample batch: scaler fit on this one (probe only)
-    assert pred.pred in set(Emotion) and pred.modality == "speech"
-    assert abs(sum(pred.scores.values()) - 1.0) < 1e-5
+    # multi-sample batch: the per-corpus StandardScaler needs >1 sample to be non-degenerate
+    wavs = sorted(glob.glob("datasets/RAVDESS/Audio_Speech_Actors_01-24/Actor_01/03-*.wav"))[:3]
+    samples = [Sample(sample_id=f"RAVDESS:p{i}", studies=[1], corpus="RAVDESS", language="en",
+                      text="x", audio=AudioRef(wav_path=Path(w)), gold_raw="neutral", gold=Emotion.NEUTRAL)
+               for i, w in enumerate(wavs)]
+    preds = m.predict_batch(samples)
+    assert len(preds) == 3
+    for pred in preds:
+        assert pred.pred in set(Emotion) and pred.modality == "speech"
+        assert abs(sum(pred.scores.values()) - 1.0) < 1e-5

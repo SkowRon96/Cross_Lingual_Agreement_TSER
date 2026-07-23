@@ -2,8 +2,12 @@
 
 StandardScaler is refit per-corpus (the original training scaler was not persisted
 and the train split was unseeded, so it is unrecoverable) — an explicit approximation.
-Therefore predict_batch must be called with the whole corpus in one batch.
+
+CALLERS MUST pass the whole corpus in one predict_batch() call. The scaler is fit
+fresh on whatever batch arrives, so a partial-corpus batch silently degrades results,
+and a batch of fewer than 2 samples is degenerate (zero variance -> all-zero features).
 """
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -39,6 +43,11 @@ class CNNTransformerSpeechModel:
         return f"cnn_tf:{self.weights_path.name}@labels={','.join(self.native_labels)}@scaler=per-corpus"
 
     def predict_batch(self, samples: list[Sample]) -> list[Prediction]:
+        if len(samples) < 2:
+            warnings.warn(
+                f"{self.model_id}: StandardScaler is refit per batch; a batch of "
+                f"{len(samples)} sample(s) yields degenerate/inconsistent features. "
+                "Run this model with the whole corpus in one batch.", stacklevel=2)
         mels = []
         for s in samples:
             audio, sr = load_audio(s)
