@@ -43,9 +43,15 @@ class HFTextModel:
         self.mapper = LabelMapper(self.native_labels, overrides=label_overrides)
 
     def config_signature(self) -> str:
+        sig = self.hf_repo
         if self._overridden:
-            return f"{self.hf_repo}@labels={','.join(self.native_labels)}"
-        return self.hf_repo
+            sig += "@labels=" + ",".join(self.native_labels)
+        if self.label_overrides:
+            import json
+            items = sorted((k, (v.value if v is not None else "DROP"))
+                           for k, v in self.label_overrides.items())
+            sig += "@ovr=" + json.dumps(items)
+        return sig
 
     def predict_batch(self, samples: list[Sample]) -> list[Prediction]:
         texts = [s.text for s in samples]

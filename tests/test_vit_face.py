@@ -1,5 +1,4 @@
 import glob
-import numpy as np
 import pytest
 from pathlib import Path
 from app.config.emotions import Emotion

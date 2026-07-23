@@ -39,17 +39,20 @@ class ViTFaceModel:
     def config_signature(self) -> str:
         return f"{self.hf_repo}@nframes={self.num_frames}"
 
-    def _abstain(self, sample_id: str) -> Prediction:
+    def _abstain(self, sample_id: str, reason: str) -> Prediction:
         return Prediction(sample_id=sample_id, model_id=self.model_id, modality=self.modality,
                           pred_raw=None, pred=None, confidence=None, scores={},
-                          abstained=True, abstain_reason="no face detected in any sampled frame")
+                          abstained=True, abstain_reason=reason)
 
     def predict_batch(self, samples: list[Sample]) -> list[Prediction]:
         out: list[Prediction] = []
         for s in samples:
-            crops = extract_face_frames(s.video_path, num_frames=self.num_frames) if s.video_path else []
+            if s.video_path is None:
+                out.append(self._abstain(s.sample_id, "no video_path on sample"))
+                continue
+            crops = extract_face_frames(s.video_path, num_frames=self.num_frames)
             if not crops:
-                out.append(self._abstain(s.sample_id))
+                out.append(self._abstain(s.sample_id, "no face detected in any sampled frame"))
                 continue
             inputs = self.processor(images=crops, return_tensors="pt").to(self.device)
             with torch.no_grad():

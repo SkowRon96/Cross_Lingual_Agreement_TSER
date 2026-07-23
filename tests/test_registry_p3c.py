@@ -18,3 +18,19 @@ def test_build_roberta6_applies_override():
     assert m.native_labels == ["anger","fear","disgust","sadness","joy","none of them"]
     from app.config.emotions import Emotion
     assert Emotion.NEUTRAL in m.mapper.supported and Emotion.SURPRISE not in m.mapper.supported
+
+
+@pytest.mark.slow
+def test_build_poltextlab_supported():
+    from app.config.emotions import Emotion
+    m = build_model("xlmr_pooled10")
+    assert m.mapper.supported == {Emotion.ANGER, Emotion.FEAR, Emotion.DISGUST,
+                                  Emotion.SADNESS, Emotion.HAPPINESS, Emotion.NEUTRAL}
+    assert Emotion.SURPRISE not in m.mapper.supported
+
+
+@pytest.mark.slow
+def test_build_tabularisai_supported():
+    from app.config.emotions import Emotion
+    m = build_model("mling_tabularis")
+    assert m.mapper.supported == set(Emotion)   # all 7
