@@ -6,6 +6,7 @@ from app.config.settings import Settings
 from app.models.base import EmotionModel
 from app.models.face.vit_face import ViTFaceModel
 from app.models.speech.cnn_transformer import CNNTransformerSpeechModel
+from app.models.speech.speechbrain_iemocap import SpeechBrainIEMOCAP
 from app.models.text.hf_text import HFTextModel
 
 _settings = Settings()
@@ -43,6 +44,7 @@ _FACTORIES: dict[str, Callable[[], EmotionModel]] = {
     "speech_cnn_tf_nemo": lambda: CNNTransformerSpeechModel(
         "speech_cnn_tf_nemo",
         _settings.speech_weights_dir / "cnn_transf_parallel_model_nemo_v1.pt", NEMO6_LABELS),
+    "en_speech_iemocap": lambda: SpeechBrainIEMOCAP("en_speech_iemocap", cache_dir=_settings.hf_home),
 }
 
 MODEL_IDS: list[str] = list(_FACTORIES)

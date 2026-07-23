@@ -15,3 +15,4 @@ safetensors>=0.4,<1
 pillow>=10,<12
 librosa>=0.10,<1
 scikit-learn>=1.4,<2
+speechbrain>=1.0,<2
