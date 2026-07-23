@@ -1,7 +1,6 @@
 """Generic Hugging Face sequence-classification text emotion model."""
 from pathlib import Path
 
-import numpy as np
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
@@ -41,7 +40,7 @@ class HFTextModel:
                              return_tensors="pt").to(self.device)
         with torch.no_grad():
             logits = self.model(**enc).logits
-        probs = torch.softmax(logits, dim=-1).cpu().numpy().astype(np.float64)
+        probs = torch.softmax(logits, dim=-1).cpu().numpy()
         return [
             to_prediction(s.sample_id, self.model_id, self.modality,
                           self.native_labels, probs[i].tolist(), self.mapper)

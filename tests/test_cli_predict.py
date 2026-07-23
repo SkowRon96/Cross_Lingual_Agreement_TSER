@@ -17,8 +17,6 @@ def test_cli_predict_en_text_on_ravdess_subset(tmp_path, capsys):
     samples = load_ravdess(Path("datasets/RAVDESS/Audio_Speech_Actors_01-24"),
                            Path("datasets/RAVDESS"))
     subset = [s for s in samples if s.speaker_id == "ravdess_actor_01"][:3]
-    for s in subset:                      # resolve gold so the index is realistic
-        pass
     index = tmp_path / "RAVDESS.parquet"
     write_index(subset, index)
     results = tmp_path / "results"

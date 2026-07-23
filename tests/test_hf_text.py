@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 from app.config.emotions import Emotion
 from app.models.text.hf_text import native_labels_from_id2label, HFTextModel
