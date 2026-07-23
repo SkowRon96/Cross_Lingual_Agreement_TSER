@@ -17,3 +17,10 @@ def test_nemo_and_cameo_globs(tmp_path):
     s = Settings(datasets_root=tmp_path / "datasets", results_root=tmp_path / "results")
     assert [p.name for p in s.nemo_parquets()] == ["train-00000.parquet", "train-00001.parquet"]
     assert [p.name for p in s.cameo_parquets()] == ["nemo-00000.parquet"]
+
+
+def test_hf_home_under_models(tmp_path):
+    from app.config.settings import Settings
+    s = Settings(datasets_root=tmp_path / "datasets", results_root=tmp_path / "results")
+    assert s.hf_home.name == "hf_cache"
+    assert s.hf_home.parent.name == "models"
