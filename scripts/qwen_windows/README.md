@@ -17,6 +17,7 @@ The Windows box has **no Claude Code** — everything here is manual copy/paste.
 | `datasets/nEMO/data\*.parquet` (Study-1 Polish speech) | `C:\qwen\data\nEMO\data\` |
 | `datasets/RAVDESS/Audio_Speech_Actors_01-24\` (wav files) | `C:\qwen\data\RAVDESS\Audio_Speech_Actors_01-24\` |
 | `scripts/qwen_windows/run_qwen.py` | `C:\qwen\run_qwen.py` |
+| `scripts/qwen_windows/sanity_check.py` | `C:\qwen\sanity_check.py` |
 
 The model (~16 GB) downloads itself from Hugging Face on first run — no need to transfer it.
 
@@ -33,6 +34,22 @@ python -c "import torch; print('CUDA ok:', torch.cuda.is_available(), torch.cuda
 ```
 
 Expected: `CUDA ok: True NVIDIA GeForce RTX 3090`.
+
+## 2.5 Sanity check FIRST (strongly recommended — ~2 min after the model downloads)
+
+Runs the model on 3 clips per source and prints the raw + parsed answer. Writes nothing.
+Do this before committing to the multi-hour run, and to confirm the Qwen2-Audio processor
+API on your `transformers` version matches the script.
+
+```powershell
+python sanity_check.py --cameo-dir data\CAMEO\data --nemo-dir data\nEMO\data `
+                       --ravdess-audio-dir data\RAVDESS\Audio_Speech_Actors_01-24 --n 3
+```
+
+Expect a small table of `sample_id | raw_response | parsed`. If `parsed` shows sensible
+emotions (not all `(abstain)`), proceed. If the model call errors, the only thing to adjust
+is the `apply_chat_template` / `processor(...)` block in `run_qwen.py`'s `main()` (and it is
+imported by `sanity_check.py`, so fixing it once fixes both).
 
 ## 3. Run (downloads the ~16 GB model on first run; fp16 fits in 24 GB VRAM)
 
