@@ -4,11 +4,11 @@
 
 # ----- Large assets excluded from the repo (see instruction §7) -----
 # Datasets (nEMO, CAMEO, ... — cloned HF repos with their own .git + LFS)
-datasets/
+/datasets/
 # Model weights (own models extracted from old_projects + downloaded checkpoints)
-models/
+/models/
 # Legacy projects (read-only source material; must never be modified by us)
-old_projects/
+/old_projects/
 
 # ----- Python -----
 __pycache__/
