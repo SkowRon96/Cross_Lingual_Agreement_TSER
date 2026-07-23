@@ -132,3 +132,11 @@ class PredictionStore:
         key = f"study{study}/{corpus}/{model_id}"
         expected_sig = self.signature(model_id, config_hash, expected_sample_ids)
         return manifest.get(key, {}).get("signature") == expected_sig
+
+    def stored_config_hash(self, study: int, corpus: str, model_id: str) -> str | None:
+        if not self.manifest_path.exists():
+            return None
+        manifest = json.loads(self.manifest_path.read_text())
+        key = f"study{study}/{corpus}/{model_id}"
+        entry = manifest.get(key)
+        return entry.get("config_hash") if entry else None

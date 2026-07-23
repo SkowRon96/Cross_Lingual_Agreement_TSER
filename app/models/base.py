@@ -28,6 +28,8 @@ class EmotionModel(Protocol):
 
     def predict_batch(self, samples: list[Sample]) -> list[Prediction]: ...
 
+    def config_signature(self) -> str: ...
+
 
 def to_prediction(
     sample_id: str,

@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     def ravdess_video_dir(self) -> Path:
         return self.datasets_root / "RAVDESS"
 
+    @property
+    def hf_home(self) -> Path:
+        return _REPO_ROOT / "models" / "hf_cache"
+
     def nemo_parquets(self) -> list[Path]:
         return sorted((self.datasets_root / "nEMO" / "data").glob("*.parquet"))
 
