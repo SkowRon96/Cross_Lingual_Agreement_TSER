@@ -50,3 +50,13 @@ def test_override_can_drop_a_normally_mapped_label():
 def test_unknown_label_raises():
     with pytest.raises(KeyError):
         map_label("banana")
+
+
+def test_override_beats_master_map():
+    # override must win even over a label that MASTER_MAP maps normally
+    assert map_label("anger", overrides={"anger": Emotion.NEUTRAL}) is Emotion.NEUTRAL
+    assert map_label("joy", overrides={"joy": None}) is None
+
+
+def test_master_map_and_drop_labels_are_disjoint():
+    assert set(MASTER_MAP).isdisjoint(DROP_LABELS)
