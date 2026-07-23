@@ -22,11 +22,12 @@ class HFTextModel:
 
     def __init__(self, model_id: str, hf_repo: str, cache_dir: Path | None = None,
                  id2label_override: dict | None = None,
-                 label_overrides: dict | None = None):
+                 label_overrides: dict | None = None, tokenizer_repo: str | None = None):
         self.model_id = model_id
         self.hf_repo = hf_repo
+        self.tokenizer_repo = tokenizer_repo
         cd = str(cache_dir) if cache_dir else None
-        self.tokenizer = AutoTokenizer.from_pretrained(hf_repo, cache_dir=cd)
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_repo or hf_repo, cache_dir=cd)
         self.model = AutoModelForSequenceClassification.from_pretrained(hf_repo, cache_dir=cd)
         self.device = _device()
         self.model.to(self.device).eval()
@@ -44,6 +45,8 @@ class HFTextModel:
 
     def config_signature(self) -> str:
         sig = self.hf_repo
+        if self.tokenizer_repo:
+            sig += f"@tok={self.tokenizer_repo}"
         if self._overridden:
             sig += "@labels=" + ",".join(self.native_labels)
         if self.label_overrides:

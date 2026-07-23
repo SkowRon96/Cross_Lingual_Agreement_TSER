@@ -22,7 +22,7 @@ _FACTORIES: dict[str, Callable[[], EmotionModel]] = {
     ),
     "xlmr_pooled10": lambda: HFTextModel(
         "xlmr_pooled10", "poltextlab/xlm-roberta-large-pooled-emotions10-v3",
-        cache_dir=_settings.hf_home),
+        cache_dir=_settings.hf_home, tokenizer_repo="xlm-roberta-large"),
     "mling_tabularis": lambda: HFTextModel(
         "mling_tabularis", "tabularisai/multilingual-emotion-classification",
         cache_dir=_settings.hf_home),
