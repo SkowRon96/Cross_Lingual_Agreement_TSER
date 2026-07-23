@@ -17,6 +17,8 @@ _CASCADE = cv2.CascadeClassifier(
 def sample_frame_indices(total: int, n: int) -> list[int]:
     if total <= 0:
         return []
+    if n <= 1:
+        return [0]
     if total <= n:
         return list(range(total))
     return [round(i * (total - 1) / (n - 1)) for i in range(n)]

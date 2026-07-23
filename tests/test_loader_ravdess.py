@@ -1,4 +1,3 @@
-from pathlib import Path
 import pytest
 from app.data.ravdess import parse_ravdess_name, load_ravdess
 
@@ -38,3 +37,11 @@ def test_load_ravdess_missing_video_raises(tmp_path):
     mp4.unlink()  # remove the paired video
     with pytest.raises(FileNotFoundError):
         load_ravdess(root / "Audio_Speech_Actors_01-24", root)
+
+
+def test_load_ravdess_odd_actor_is_male_and_normal_intensity(tmp_path):
+    root, wav, mp4 = _make_pair(tmp_path, emotion="03", intensity="01", actor="07")
+    s = load_ravdess(root / "Audio_Speech_Actors_01-24", root)[0]
+    assert s.gender == "male"        # actor 07 odd
+    assert s.intensity == "normal"   # intensity 01
+    assert s.gold_raw == "happy"

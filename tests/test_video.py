@@ -17,6 +17,11 @@ def test_sample_frame_indices_empty():
     assert sample_frame_indices(0, 8) == []
 
 
+def test_sample_frame_indices_single_frame():
+    assert sample_frame_indices(100, 1) == [0]
+    assert sample_frame_indices(0, 1) == []
+
+
 def test_detect_face_returns_none_on_blank_frame():
     blank = np.zeros((240, 320, 3), dtype=np.uint8)  # no face
     assert detect_and_crop_face(blank) is None
