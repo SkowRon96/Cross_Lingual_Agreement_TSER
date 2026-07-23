@@ -23,6 +23,16 @@ def _predict(args) -> int:
     return 0
 
 
+def _import_predictions(args) -> int:
+    from app.data.import_preds import import_predictions
+    settings = Settings()
+    results_root = Path(args.results_root) if args.results_root else settings.results_root
+    store = PredictionStore(results_root / "predictions")
+    n = import_predictions(Path(args.file), store, args.study, args.corpus)
+    print(f"imported {n} speech_zeroshot predictions for {args.corpus} (study {args.study})")
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -35,6 +45,12 @@ def main(argv=None) -> int:
     p.add_argument("--force", action="store_true")
     p.add_argument("--batch-size", type=int, default=32)
     p.set_defaults(func=_predict)
+    ip = sub.add_parser("import-predictions", help="Import external predictions (e.g. Qwen from Windows) into the store")
+    ip.add_argument("--file", required=True)
+    ip.add_argument("--study", type=int, required=True)
+    ip.add_argument("--corpus", required=True)
+    ip.add_argument("--results-root", default=None)
+    ip.set_defaults(func=_import_predictions)
     args = parser.parse_args(argv)
     return args.func(args)
 
