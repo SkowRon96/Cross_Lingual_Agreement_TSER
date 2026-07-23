@@ -68,6 +68,29 @@ def test_append_dedups_sample_id(tmp_path: Path):
     assert a_rows[0].pred is Emotion.HAPPINESS
 
 
+def test_write_dedups_intra_batch_sample_id(tmp_path: Path):
+    store = PredictionStore(tmp_path)
+    preds = [_pred("a"), _pred("a", Emotion.SADNESS)]
+    store.write(1, "nEMO", "m1", preds, config_hash="cfg1")
+
+    got = store.read(1, "nEMO", "m1")
+    a_rows = [p for p in got if p.sample_id == "a"]
+    assert len(a_rows) == 1
+    # first occurrence in the batch is kept
+    assert a_rows[0].pred is Emotion.HAPPINESS
+
+
+def test_append_dedups_intra_batch_sample_id(tmp_path: Path):
+    store = PredictionStore(tmp_path)
+    store.write(1, "nEMO", "m1", [_pred("a")], config_hash="cfg1")
+    store.append(1, "nEMO", "m1", [_pred("b"), _pred("b", Emotion.SADNESS)])
+
+    got = store.read(1, "nEMO", "m1")
+    b_rows = [p for p in got if p.sample_id == "b"]
+    assert len(b_rows) == 1
+    assert b_rows[0].pred is Emotion.HAPPINESS
+
+
 def test_existing_sample_ids_and_append(tmp_path: Path):
     store = PredictionStore(tmp_path)
     store.write(1, "nEMO", "m1", [_pred("a")], config_hash="cfg1")

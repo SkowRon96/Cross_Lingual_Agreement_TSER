@@ -43,8 +43,12 @@ def to_prediction(
     scores, then takes the canonical argmax as pred and its value as
     confidence. Abstains (pred=None) when all mass maps to dropped labels.
     """
-    native_argmax = native_labels[max(range(len(scores)), key=lambda i: scores[i])]
+    if len(native_labels) != len(scores):
+        raise ValueError(
+            f"Expected {len(native_labels)} scores to match native_labels, got {len(scores)}"
+        )
     canonical = mapper.map_scores(scores)
+    native_argmax = native_labels[max(range(len(scores)), key=lambda i: scores[i])]
     if not canonical:
         return Prediction(
             sample_id=sample_id, model_id=model_id, modality=modality,

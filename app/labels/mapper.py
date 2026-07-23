@@ -17,7 +17,7 @@ class LabelMapper:
         overrides: dict[str, Emotion | None] | None = None,
     ) -> None:
         self.native_labels = list(native_labels)
-        self.overrides = overrides
+        self.overrides = dict(overrides) if overrides else None
         # Precompute native index -> Emotion | None (None means dropped).
         self._targets: list[Emotion | None] = [
             map_label(lbl, overrides=overrides) for lbl in self.native_labels

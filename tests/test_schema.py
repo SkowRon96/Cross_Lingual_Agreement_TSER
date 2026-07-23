@@ -23,6 +23,8 @@ def test_audioref_requires_exactly_one_source():
         AudioRef(wav_path=Path("a.wav"), parquet_path=Path("b.parquet"), row_index=0)  # two sources
     with pytest.raises(ValidationError):
         AudioRef(parquet_path=Path("b.parquet"))  # parquet without row_index
+    with pytest.raises(ValidationError):
+        AudioRef(wav_path=Path("a.wav"), row_index=0)  # row_index without parquet_path
 
 
 def test_sample_minimal_valid():

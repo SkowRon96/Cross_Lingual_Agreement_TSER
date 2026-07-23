@@ -33,7 +33,7 @@ def test_dropped_mass_is_removed_and_renormalized():
     labels = ["anger", "contempt", "neutral"]
     m = LabelMapper(labels)
     out = m.map_scores([0.5, 0.3, 0.2])
-    assert Emotion.DISGUST not in out
+    assert set(out) == {Emotion.ANGER, Emotion.NEUTRAL}
     assert approx_sum_one(out)
     # 0.5 and 0.2 renormalized over 0.7 total.
     assert math.isclose(out[Emotion.ANGER], 0.5 / 0.7, rel_tol=1e-9)

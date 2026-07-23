@@ -23,7 +23,7 @@ class PredictionStore:
         ids_digest = hashlib.sha256(
             json.dumps(sorted(set(sample_ids))).encode("utf-8")
         ).hexdigest()
-        payload = f"{model_id}|{config_hash}|{ids_digest}"
+        payload = json.dumps([model_id, config_hash, ids_digest])
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     # ----- serialization helpers -----
@@ -32,6 +32,18 @@ class PredictionStore:
         d = p.model_dump(mode="json")
         d["scores"] = json.dumps(d["scores"])  # dict -> JSON string column
         return d
+
+    @staticmethod
+    def _dedup_by_sample_id(predictions: list[Prediction]) -> list[Prediction]:
+        """Drop duplicate sample_ids within a batch, keeping the first occurrence."""
+        seen: set[str] = set()
+        deduped: list[Prediction] = []
+        for p in predictions:
+            if p.sample_id in seen:
+                continue
+            seen.add(p.sample_id)
+            deduped.append(p)
+        return deduped
 
     @staticmethod
     def _from_row(row: dict) -> Prediction:
@@ -48,6 +60,7 @@ class PredictionStore:
     # ----- read / write -----
     def write(self, study: int, corpus: str, model_id: str,
               predictions: list[Prediction], config_hash: str) -> Path:
+        predictions = self._dedup_by_sample_id(predictions)
         out = self.path(study, corpus, model_id)
         out.parent.mkdir(parents=True, exist_ok=True)
         df = pd.DataFrame([self._to_row(p) for p in predictions])
@@ -82,6 +95,7 @@ class PredictionStore:
 
         p = self.path(study, corpus, model_id)
         existing_ids = self.existing_sample_ids(study, corpus, model_id)
+        predictions = self._dedup_by_sample_id(predictions)
         new_preds = [x for x in predictions if x.sample_id not in existing_ids]
         new = pd.DataFrame([self._to_row(x) for x in new_preds])
         if p.exists():

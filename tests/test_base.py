@@ -1,4 +1,5 @@
 import math
+import pytest
 from app.config.emotions import Emotion
 from app.labels.mapper import LabelMapper
 from app.models.base import Prediction, to_prediction
@@ -29,6 +30,16 @@ def test_to_prediction_abstains_when_all_mass_dropped():
     assert p.confidence is None
     assert p.scores == {}
     assert p.abstain_reason is not None
+
+
+def test_to_prediction_raises_on_length_mismatch():
+    mapper = LabelMapper(["angry", "calm", "neutral"])
+    with pytest.raises(ValueError):
+        to_prediction(
+            sample_id="s4", model_id="dummy", modality="speech",
+            native_labels=["angry", "calm", "neutral"],
+            scores=[0.2, 0.8], mapper=mapper,
+        )
 
 
 def test_prediction_serializes_scores_with_emotion_keys():
