@@ -39,3 +39,16 @@ class Settings(BaseSettings):
     @property
     def speech_weights_dir(self) -> Path:
         return _REPO_ROOT / "old_projects" / "polish-speech-emotion-recognition" / "notebooks" / "models"
+
+    @property
+    def lstm_model_dir(self) -> Path:
+        return (_REPO_ROOT / "old_projects" / "chatgpt-pl-emotion-recognition"
+                / "results" / "nkjp+wiki-forms-all-300-cbow-ns_v2")
+
+    @property
+    def tf_python(self) -> Path:
+        return _REPO_ROOT / ".venv-tf" / "bin" / "python"
+
+    @property
+    def lstm_infer_script(self) -> Path:
+        return _REPO_ROOT / "app" / "models" / "text" / "lstm" / "infer.py"
