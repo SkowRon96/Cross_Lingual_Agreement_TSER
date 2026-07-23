@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     def index_dir(self) -> Path:
         return self.results_root / "index"
 
+    @property
+    def ravdess_audio_dir(self) -> Path:
+        return self.datasets_root / "RAVDESS" / "Audio_Speech_Actors_01-24"
+
+    @property
+    def ravdess_video_dir(self) -> Path:
+        return self.datasets_root / "RAVDESS"
+
     def nemo_parquets(self) -> list[Path]:
         return sorted((self.datasets_root / "nEMO" / "data").glob("*.parquet"))
 

@@ -60,3 +60,9 @@ def test_override_beats_master_map():
 
 def test_master_map_and_drop_labels_are_disjoint():
     assert set(MASTER_MAP).isdisjoint(DROP_LABELS)
+
+
+def test_ravdess_fearful_maps_to_fear():
+    from app.config.emotions import Emotion
+    assert map_label("fearful") is Emotion.FEAR
+    assert map_label("FEARFUL") is Emotion.FEAR  # normalization
