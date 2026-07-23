@@ -4,6 +4,7 @@ from collections.abc import Callable
 from app.config.emotions import Emotion
 from app.config.settings import Settings
 from app.models.base import EmotionModel
+from app.models.face.vit_face import ViTFaceModel
 from app.models.text.hf_text import HFTextModel
 
 _settings = Settings()
@@ -30,6 +31,8 @@ _FACTORIES: dict[str, Callable[[], EmotionModel]] = {
         cache_dir=_settings.hf_home,
         id2label_override=ROBERTA6_ID2LABEL,
         label_overrides={"none of them": Emotion.NEUTRAL}),
+    "en_face_vit": lambda: ViTFaceModel(
+        "en_face_vit", "trpakov/vit-face-expression", cache_dir=_settings.hf_home),
 }
 
 MODEL_IDS: list[str] = list(_FACTORIES)
