@@ -154,7 +154,11 @@ def _flush(buffer, out):
     new = pd.DataFrame(buffer)
     if os.path.exists(out):
         new = pd.concat([pd.read_parquet(out), new], ignore_index=True)
-    new.to_parquet(out, index=False)
+    # atomic write: an interrupt mid-write (multi-hour run) must not corrupt the
+    # resume file. os.replace is atomic on POSIX and Windows (same filesystem).
+    tmp = out + ".tmp"
+    new.to_parquet(tmp, index=False)
+    os.replace(tmp, out)
 
 
 if __name__ == "__main__":
