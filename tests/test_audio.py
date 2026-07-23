@@ -79,3 +79,19 @@ def test_decode_downmixes_stereo_to_mono_mean(wav_bytes):
     assert got_sr == sr
     assert arr.ndim == 1 and arr.shape[0] == 400
     assert np.allclose(arr, (ch0 + ch1) / 2, atol=1e-6)  # mean of channels = 0.2
+
+
+def test_load_audio_raises_on_null_audio_bytes(tmp_path):
+    import pytest
+    table = pa.table({
+        "file_id": ["a"],
+        "audio": pa.array([{"bytes": None, "path": "external.wav"}],
+                          type=pa.struct([("bytes", pa.binary()), ("path", pa.string())])),
+        "emotion": ["neutral"],
+    })
+    p = tmp_path / "nullbytes.parquet"
+    pq.write_table(table, p)
+    s = Sample(sample_id="x:a", studies=[1], corpus="x", language="pl", text="t",
+               audio=AudioRef(parquet_path=p, row_index=0), gold_raw="neutral", gold=Emotion.NEUTRAL)
+    with pytest.raises(ValueError):
+        load_audio(s)

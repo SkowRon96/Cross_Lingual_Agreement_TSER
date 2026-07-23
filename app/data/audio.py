@@ -25,7 +25,10 @@ def _read_parquet_audio_bytes(parquet_path, row_index: int) -> bytes:
         if remaining < n:
             col = pf.read_row_group(rg, columns=["audio"]).column("audio")
             struct = col[remaining].as_py()
-            return struct["bytes"]
+            raw = struct["bytes"]
+            if raw is None:
+                raise ValueError(f"row {row_index} in {parquet_path} has no embedded audio bytes")
+            return raw
         remaining -= n
     raise IndexError(f"row_index {row_index} out of range for {parquet_path}")
 

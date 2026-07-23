@@ -38,3 +38,14 @@ def test_load_nemo_maps_fields_and_local_row_index(tmp_path):
     assert s0.audio.parquet_path == p0 and s0.audio.row_index == 0
     assert s1.audio.parquet_path == p1 and s1.audio.row_index == 0  # local to its shard
     assert s0.speaker_id == "WR0" and s0.age == "23"
+
+
+def test_load_nemo_null_age_becomes_none(tmp_path):
+    """Null age in nEMO shard becomes None, not string 'None'."""
+    p = _nemo_shard(tmp_path, "train-00000.parquet", [
+        {"file_id": "X0_neutral_1", "emotion": "neutral", "raw": "R", "norm": "n",
+         "spk": "X0", "g": "male", "age": None},
+    ])
+    samples = load_nemo([p])
+    assert len(samples) == 1
+    assert samples[0].age is None

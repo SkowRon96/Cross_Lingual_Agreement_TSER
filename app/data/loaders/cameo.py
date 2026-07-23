@@ -44,6 +44,6 @@ def load_cameo_split(path: Path) -> list[Sample]:
             gold=None,
             speaker_id=cols["speaker_id"][i],
             gender=cols["gender"][i],
-            age=str(cols["age"][i]),
+            age=None if cols["age"][i] is None else str(cols["age"][i]),
         ))
     return samples
