@@ -54,6 +54,24 @@ def test_agreement_sets_headline_flag():
     gold = {"1": A, "2": S}
     pa = [_p("1", A, "mling_tabularis"), _p("2", S, "mling_tabularis")]
     pb = [_p("1", A, "speech_zeroshot"), _p("2", S, "speech_zeroshot")]
-    r = agreement(pa, pb, gold, "mling_tabularis", "speech_zeroshot", "nEMO")
+    pair = frozenset({"mling_tabularis", "speech_zeroshot"})
+    r = agreement(pa, pb, gold, "mling_tabularis", "speech_zeroshot", "nEMO",
+                  headline_pair=pair)
     assert r.headline is True and r.secondary_flag is False
     assert r.n_used == 2 and abs(r.kappa - 1.0) < 1e-9
+
+
+def test_wrong_pair_not_headline_even_if_both_headline_models():
+    # text-text pair (en_text_hartmann + mling_tabularis) on RAVDESS must NOT be headline
+    gold = {"1": A, "2": S}
+    pa = [_p("1", A), _p("2", S)]
+    pb = [_p("1", A), _p("2", A)]
+    pair = frozenset({"en_text_hartmann", "speech_zeroshot"})  # EN corpus headline
+    r = agreement(pa, pb, gold, "en_text_hartmann", "mling_tabularis", "RAVDESS",
+                  headline_pair=pair)
+    assert r.headline is False
+
+
+def test_cohen_single_class_perfect_agreement_is_one():
+    # both raters constant on the same class -> perfect agreement -> kappa 1.0
+    assert abs(cohen_kappa([A, A, A], [A, A, A]) - 1.0) < 1e-9

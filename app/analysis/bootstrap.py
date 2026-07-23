@@ -38,4 +38,8 @@ def bootstrap_diff(la1, lb1, la2, lb2, *, n: int = 1000, seed: int = SEED):
         diffs[k] = k1 - k2
     point = cohen_kappa(la1, lb1) - cohen_kappa(la2, lb2)
     lo, hi = np.percentile(diffs, [2.5, 97.5])
-    return point, BootstrapCI(lo=float(lo), hi=float(hi))
+    # two-sided bootstrap p-value for H0: diff == 0
+    frac_le = float(np.mean(diffs <= 0.0))
+    frac_ge = float(np.mean(diffs >= 0.0))
+    p_value = min(1.0, 2 * min(frac_le, frac_ge))
+    return point, BootstrapCI(lo=float(lo), hi=float(hi)), p_value

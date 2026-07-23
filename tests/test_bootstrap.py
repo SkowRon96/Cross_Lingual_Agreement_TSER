@@ -24,5 +24,6 @@ def test_perfect_agreement_ci_at_one():
 def test_diff_ci_deterministic():
     a1 = [A, A, S, S]; b1 = [A, A, S, S]
     a2 = [A, S, A, S]; b2 = [S, A, S, A]
-    d, ci = bootstrap_diff(a1, b1, a2, b2, n=200)
+    d, ci, p = bootstrap_diff(a1, b1, a2, b2, n=200)
     assert ci.lo <= ci.hi     # CI ordered
+    assert 0.0 <= p <= 1.0

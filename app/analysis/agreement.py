@@ -45,7 +45,10 @@ def cohen_kappa(labels_a: list[Emotion], labels_b: list[Emotion]) -> float:
     ca, cb = Counter(labels_a), Counter(labels_b)
     pe = sum((ca[c] / n) * (cb[c] / n) for c in cats)
     if pe == 1.0:
-        return 0.0  # degenerate: both raters constant on one class
+        # pe == 1.0 <=> both raters put all mass on the SAME single class
+        # (Cauchy-Schwarz equality) <=> po == 1.0. That is perfect agreement,
+        # so kappa is 1.0 (returning 0.0 here would bias bootstrap CIs downward).
+        return 1.0
     return (po - pe) / (1 - pe)
 
 
@@ -69,15 +72,18 @@ def fleiss_kappa(rater_labels: list[list[Emotion]]) -> float:
     return (P_bar - P_e) / (1 - P_e)
 
 
-def agreement(preds_a, preds_b, gold, model_a, model_b, corpus) -> AgreementResult:
+def agreement(preds_a, preds_b, gold, model_a, model_b, corpus,
+              headline_pair=None) -> AgreementResult:
     la, lb, exc = aligned_pairs(
         preds_a, preds_b, gold,
         studies.SUPPORTED[model_a], studies.SUPPORTED[model_b])
     k = cohen_kappa(la, lb)
-    headline = (model_a in studies.HEADLINE.values()
-                and model_b in studies.HEADLINE.values()
-                and model_a not in studies.SECONDARY
-                and model_b not in studies.SECONDARY)
+    # Headline only if this exact pair is the corpus-language's designated clean
+    # cross-modal pair (passed in by the orchestrator, which knows the language).
+    # Guards against text-text pairs or the wrong language's headline model being
+    # flagged just because both happen to be headline models somewhere.
+    headline = (headline_pair is not None
+                and frozenset({model_a, model_b}) == frozenset(headline_pair))
     secondary = (model_a in studies.SECONDARY) or (model_b in studies.SECONDARY)
     return AgreementResult(
         corpus=corpus, model_a=model_a, model_b=model_b, kappa=k,

@@ -125,6 +125,7 @@ def analyze_study(study, *, results_root: Path, index_dir: Path) -> AnalysisBund
     index_dir = Path(index_dir)
     bundle = AnalysisBundle(study=study)
     corpora = [c for (s, c) in studies.ROSTER if s == study]
+    headline_aligned: dict[str, tuple[list, list]] = {}  # lang -> (la, lb) for PL-vs-EN diff
     for corpus in corpora:
         if study == 2:
             continue  # study 2 handled corpus-wise in _study2
@@ -142,19 +143,28 @@ def analyze_study(study, *, results_root: Path, index_dir: Path) -> AnalysisBund
             present[mid] = preds
             bundle.baselines.append(
                 metrics.baseline(preds, gold, mid, corpus, studies.MODALITY[mid]))
+        lang = "PL" if corpus == "nEMO" else ("EN" if corpus == "RAVDESS" else None)
+        headline_pair = None
+        if lang:
+            headline_pair = frozenset({studies.HEADLINE[(lang, "text")],
+                                       studies.HEADLINE[(lang, "speech")]})
         mids = list(present)
         for i in range(len(mids)):
             for j in range(i + 1, len(mids)):
                 a, b = mids[i], mids[j]
-                res = agreement(present[a], present[b], gold, a, b, corpus)
+                res = agreement(present[a], present[b], gold, a, b, corpus,
+                                headline_pair=headline_pair)
                 la, lb, _ = aligned_pairs(present[a], present[b], gold,
                                           studies.SUPPORTED[a], studies.SUPPORTED[b])
                 res.ci = bootstrap.bootstrap_kappa(la, lb) if la else None
                 bundle.agreements.append(res)
-        lang = "PL" if corpus == "nEMO" else ("EN" if corpus == "RAVDESS" else None)
         if lang:
             ht, hs = studies.HEADLINE[(lang, "text")], studies.HEADLINE[(lang, "speech")]
             if ht in present and hs in present:
+                hla, hlb, _ = aligned_pairs(present[ht], present[hs], gold,
+                                            studies.SUPPORTED[ht], studies.SUPPORTED[hs])
+                if hla:
+                    headline_aligned[lang] = (hla, hlb)
                 bundle.conflicts.append(
                     conflicts.conflict(present[ht], present[hs], gold, ht, hs, corpus))
                 cc = correlation.confidence_corr(present[ht], present[hs], ht, hs, corpus)
@@ -171,6 +181,14 @@ def analyze_study(study, *, results_root: Path, index_dir: Path) -> AnalysisBund
             trio = ["en_text_hartmann", "speech_zeroshot", "en_face_vit"]
             if all(m in present for m in trio):
                 _fleiss_ravdess(bundle, present, gold, trio)
+    # PL vs EN headline κ difference (study 1, unpaired: independent resamples)
+    if "PL" in headline_aligned and "EN" in headline_aligned:
+        (pla, plb), (ela, elb) = headline_aligned["PL"], headline_aligned["EN"]
+        point, ci, p = bootstrap.bootstrap_diff(pla, plb, ela, elb)
+        bundle.tests.append(TestResult(
+            name="kappa_diff_pl_vs_en", corpus="nEMO|RAVDESS",
+            detail="headline text↔speech κ: PL (nEMO) minus EN (RAVDESS)",
+            statistic=point, p_value=p, extra={"ci_lo": ci.lo, "ci_hi": ci.hi}))
     if study == 2:
         _study2(bundle, store, index_dir)
     return bundle
