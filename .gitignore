@@ -33,6 +33,9 @@ env/
 # Hugging Face / torch caches if ever placed inside the project
 .hf_cache/
 .torch_cache/
+# speechbrain / HF pretrained caches created at runtime in the repo root
+wav2vec2_checkpoints/
+pretrained_models/
 
 # ----- OS -----
 .DS_Store
