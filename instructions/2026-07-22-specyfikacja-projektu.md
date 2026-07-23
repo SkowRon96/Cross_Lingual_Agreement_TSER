@@ -202,5 +202,25 @@ python -m app.cli benchmark --model speech_zeroshot --n 20
 2. **StandardScaler** autorskiego modelu mowy — strategia normalizacji (dopasowanie na eval vs per-próbka).
 3. **Zakres pobrania RAVDESS z Zenodo** (Video_Speech per-aktor) + pipeline klatek/detekcji twarzy.
 4. **none-of-them / poker** — potwierdzone: none-of-them→neutral (bez osobnego neutral) / DROP (z neutral); poker→DROP.
-5. **Tokenizer autorskiego LSTM** — `finalwordindex.pkl` (76 KB) wygląda na zbyt mały wobec słownika modelu (`input_dim=294182`). Zweryfikować dopasowanie do `test.h5`; w razie niezgodności zrekonstruować `word_index` ze słownika word2vec (deterministycznie).
+5. **Tokenizer autorskiego LSTM** — ROZWIĄZANE: retrening (P3e-prep) produkuje zparowany `model.h5` + `finalwordindex.pkl`; word2vec faktycznie użyty jako wagi embeddingu (wyrównany do tokenizera).
+
+## 9. Końcowe ulepszenia modeli (do wykonania NA SAM KONIEC — tylko podmiana modelu w strukturze)
+
+Wykonać po zebraniu głównych wyników; każde ulepszenie to potem **wyłącznie podmiana modelu** (ten sam `model_id`, nowe wagi), bez zmian w reszcie pipeline'u.
+
+### 9.1 Autorski LSTM tekstowy (`pl_text_lstm`)
+Ocena po retreningu (2026-07-23): val 96,3% (in-domain), test-person 87,4% (F1 0,876) — dobrze wytrenowany, lekki przeucz. Główne pomyłki: **anger↔disgust** (62), surprise/neutral najsłabsze.
+- **softmax + categorical_crossentropy** zamiast `sigmoid + binary_crossentropy` (błędne dla single-label; poprawia **kalibrację confidence** — ważne dla korelacji confidence w Badaniu 2). Największy oczekiwany zysk.
+- **early stopping** (~epoka 6–8; zbiega ~5, 20 epok to za dużo).
+- **doważenie klas** (disgust najmniejszy w train; redukcja anger↔disgust).
+- **więcej realnych danych PL** (chatbot jest syntetyczny) dla lepszej generalizacji.
+- Alternatywa mocniejsza: HerBERT/polski BERT (ale to inny model — transformery mamy w poltextlab/tabularisai).
+- **Walidacja:** zewnętrznie **XED (Polish)** (napisy filmowe, Plutchik→nasze 6+neutral, nazwane); wewnątrz badania — zgodność z poltextlab/tabularisai (kontrola „model-model"). Uwaga: na nEMO wynik będzie niski (tekst aktorski słabo emocjonalny) — to caveat §5.1, nie wada modelu.
+
+### 9.2 Autorskie modele mowy (`speech_cnn_tf_ravdess`, `speech_cnn_tf_nemo`) — DO ZWERYFIKOWANIA
+- **Policzyć NASZE realne metryki** (README 94–96% to walidacja/wyciek; realny held-out ~61%) na indeksach z badania; zaraportować rzetelnie.
+- **StandardScaler per-korpus** to przybliżenie (oryginał nieodtwarzalny). Przy ew. retreningu **zapisać scaler** razem z wagami (usuwa przybliżenie).
+- **Leakage** na RAVDESS/nEMO — świadomy; ew. retrening z **ustalonym ziarnem splitu** (reprodukowalność) i czystym podziałem.
+- Potencjalne ulepszenia: augmentacja, lepsza normalizacja; ewentualnie softmax już jest (model kończy się Softmax).
+- **Walidacja krzyżowa:** zgodność z modelem czystym (Qwen zero-shot / speechbrain) jako kontrola.
 6. **Retraining / poprawa autorskiego LSTM — opcja awaryjna, TYLKO na sam koniec.** Domyślnie używamy zapisanych wag (`test.h5`, §2 pkt 4). Jeśli końcowe wyniki modelu tekstowego PL okażą się słabe (np. baseline accuracy/F1 znacząco odstający od pozostałych modeli tekstowych), dopiero wtedy rozważamy retrening/dostrojenie LSTM: word2vec (mamy) + dane chatbota + odbudowa tokenizera. Nie robimy tego na starcie — to ostatni krok, uruchamiany warunkowo po ocenie wyników.

@@ -8,6 +8,7 @@ from app.models.face.vit_face import ViTFaceModel
 from app.models.speech.cnn_transformer import CNNTransformerSpeechModel
 from app.models.speech.speechbrain_iemocap import SpeechBrainIEMOCAP
 from app.models.text.hf_text import HFTextModel
+from app.models.text.lstm.wrapper import LSTMTextModel
 
 _settings = Settings()
 
@@ -45,6 +46,8 @@ _FACTORIES: dict[str, Callable[[], EmotionModel]] = {
         "speech_cnn_tf_nemo",
         _settings.speech_weights_dir / "cnn_transf_parallel_model_nemo_v1.pt", NEMO6_LABELS),
     "en_speech_iemocap": lambda: SpeechBrainIEMOCAP("en_speech_iemocap", cache_dir=_settings.hf_home),
+    "pl_text_lstm": lambda: LSTMTextModel(
+        "pl_text_lstm", _settings.lstm_model_dir, _settings.tf_python, _settings.lstm_infer_script),
 }
 
 MODEL_IDS: list[str] = list(_FACTORIES)
