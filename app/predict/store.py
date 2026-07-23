@@ -21,7 +21,7 @@ class PredictionStore:
 
     def signature(self, model_id: str, config_hash: str, sample_ids: Iterable[str]) -> str:
         ids_digest = hashlib.sha256(
-            "\n".join(sorted(sample_ids)).encode("utf-8")
+            json.dumps(sorted(set(sample_ids))).encode("utf-8")
         ).hexdigest()
         payload = f"{model_id}|{config_hash}|{ids_digest}"
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -47,12 +47,14 @@ class PredictionStore:
 
     # ----- read / write -----
     def write(self, study: int, corpus: str, model_id: str,
-              predictions: list[Prediction], signature: str) -> Path:
+              predictions: list[Prediction], config_hash: str) -> Path:
         out = self.path(study, corpus, model_id)
         out.parent.mkdir(parents=True, exist_ok=True)
         df = pd.DataFrame([self._to_row(p) for p in predictions])
         df.to_parquet(out, index=False)
-        self._record_manifest(study, corpus, model_id, signature, len(predictions))
+        sample_ids = [p.sample_id for p in predictions]
+        sig = self.signature(model_id, config_hash, sample_ids)
+        self._record_manifest(study, corpus, model_id, sig, config_hash, len(set(sample_ids)))
         return out
 
     def read(self, study: int, corpus: str, model_id: str) -> list[Prediction]:
@@ -67,30 +69,52 @@ class PredictionStore:
 
     def append(self, study: int, corpus: str, model_id: str,
                predictions: list[Prediction]) -> None:
+        key = f"study{study}/{corpus}/{model_id}"
+        manifest = {}
+        if self.manifest_path.exists():
+            manifest = json.loads(self.manifest_path.read_text())
+        entry = manifest.get(key)
+        if entry is None or "config_hash" not in entry:
+            raise ValueError(
+                f"No manifest entry with config_hash for {key}; call write() before append()."
+            )
+        config_hash = entry["config_hash"]
+
         p = self.path(study, corpus, model_id)
-        new = pd.DataFrame([self._to_row(x) for x in predictions])
+        existing_ids = self.existing_sample_ids(study, corpus, model_id)
+        new_preds = [x for x in predictions if x.sample_id not in existing_ids]
+        new = pd.DataFrame([self._to_row(x) for x in new_preds])
         if p.exists():
             existing = pd.read_parquet(p)
-            new = pd.concat([existing, new], ignore_index=True)
+            if not new.empty:
+                new = pd.concat([existing, new], ignore_index=True)
+            else:
+                new = existing
         p.parent.mkdir(parents=True, exist_ok=True)
         new.to_parquet(p, index=False)
 
+        all_ids = existing_ids | {x.sample_id for x in new_preds}
+        sig = self.signature(model_id, config_hash, all_ids)
+        self._record_manifest(study, corpus, model_id, sig, config_hash, len(all_ids))
+
     # ----- manifest / cache -----
     def _record_manifest(self, study: int, corpus: str, model_id: str,
-                          signature: str, n: int) -> None:
+                          signature: str, config_hash: str, n: int) -> None:
         manifest = {}
         if self.manifest_path.exists():
             manifest = json.loads(self.manifest_path.read_text())
         key = f"study{study}/{corpus}/{model_id}"
-        manifest[key] = {"signature": signature, "n_samples": n}
+        manifest[key] = {"signature": signature, "config_hash": config_hash, "n_samples": n}
         self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
         self.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
 
-    def is_cached(self, study: int, corpus: str, model_id: str, signature: str) -> bool:
+    def is_cached(self, study: int, corpus: str, model_id: str, config_hash: str,
+                  expected_sample_ids: Iterable[str]) -> bool:
         if not self.path(study, corpus, model_id).exists():
             return False
         if not self.manifest_path.exists():
             return False
         manifest = json.loads(self.manifest_path.read_text())
         key = f"study{study}/{corpus}/{model_id}"
-        return manifest.get(key, {}).get("signature") == signature
+        expected_sig = self.signature(model_id, config_hash, expected_sample_ids)
+        return manifest.get(key, {}).get("signature") == expected_sig
