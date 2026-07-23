@@ -16,3 +16,5 @@ pillow>=10,<12
 librosa>=0.10,<1
 scikit-learn>=1.4,<2
 speechbrain>=1.0,<2
+matplotlib>=3.8,<4
+tabulate>=0.9,<1
