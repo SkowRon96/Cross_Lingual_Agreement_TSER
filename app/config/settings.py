@@ -35,3 +35,7 @@ class Settings(BaseSettings):
 
     def cameo_parquets(self) -> list[Path]:
         return sorted((self.datasets_root / "CAMEO" / "data").glob("*.parquet"))
+
+    @property
+    def speech_weights_dir(self) -> Path:
+        return _REPO_ROOT / "old_projects" / "polish-speech-emotion-recognition" / "notebooks" / "models"
