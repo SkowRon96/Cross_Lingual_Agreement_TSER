@@ -65,7 +65,7 @@ Zmierzyć **zgodność międzymodalną tekst↔mowa** w rozpoznawaniu emocji, wi
 | model_id | model | pokrywa | brakuje | extra → |
 |---|---|---|---|---|
 | `pl_text_lstm` | autorski LSTM (wagi `test.h5`, inferencja) | wszystkie 7 | — | — |
-| `pl_text_roberta6` | visegradmedia Emotion_RoBERTa_polish6 | anger,fear,disgust,sadness,happiness,neutral | **surprise** | none-of-them→neutral |
+| `pl_text_roberta6` ⚠️ | visegradmedia Emotion_RoBERTa_polish6 | anger,fear,disgust,sadness,happiness,neutral | **surprise** | none-of-them→neutral; **kolejność etykiet ZAŁOŻONA** L0..5=anger,fear,disgust,sadness,joy,none (niezweryfikowana — brak `label2id` w repo, README się nie odtwarza); model **drugorzędny, nigdy w nagłówku** |
 | `xlmr_pooled10` | poltextlab xlm-roberta pooled-emotions10-v3 | anger,fear,disgust,sadness,happiness,neutral | **surprise** | hope,pride→DROP; enthusiasm→happiness; none-of-them→DROP |
 | `mling_tabularis` | tabularisai multilingual-emotion | wszystkie 7 | — | contempt,frustration,gratitude,love→DROP |
 | `en_text_hartmann` | j-hartmann distilroberta | wszystkie 7 | — | — |
@@ -194,6 +194,7 @@ python -m app.cli benchmark --model speech_zeroshot --n 20
 - Zero-shot audio-LLM — niższy pułap niż dedykowane klasyfikatory (spójne z PolEval Task 4).
 - Mowa aktorska/wyreżyserowana (RAVDESS, nEMO) — ograniczona trafność ekologiczna; kanał tekstowy słabo emocjonalny w tych korpusach.
 - Leakage autorskich modeli na RAVDESS/nEMO — świadomy, oznaczony; wnioski „bliżej gold" z modeli czystych.
+- **Model `pl_text_roberta6` (visegradmedia) — kolejność etykiet ZAŁOŻONA, niezweryfikowana** (L0..5=anger,fear,disgust,sadness,joy,none-of-them). Repo nie publikuje `label2id`; próby odzysku (README-fingerprint, sonda nEMO) nie dały pewnego mapowania. Używany jako model **drugorzędny** (nigdy w nagłówku κ, tylko w pełnej macierzy / kontroli „model-model"); jawnie oflagowany. Jeśli mapowanie okaże się błędne, zaniży to zgodność roberta6 — dlatego nie wpływa na wnioski nagłówkowe.
 
 ## 8. Otwarte punkty (do rozstrzygnięcia w implementacji)
 
