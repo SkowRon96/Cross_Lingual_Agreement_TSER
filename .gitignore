@@ -53,3 +53,7 @@ Thumbs.db
 results/**/*.npz
 results/**/*.pkl
 results/**/tmp/
+# Derived, machine-specific intermediates (regenerable via ingest/predict)
+results/index/
+results/predictions/
+results/analysis/

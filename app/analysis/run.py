@@ -25,9 +25,14 @@ def _warn(msg: str) -> None:
     print(f"[analyze] WARNING: {msg}", file=sys.stderr)
 
 
+def _index_path(index_dir: Path, study: int, corpus: str) -> Path:
+    # study-namespaced to avoid case-insensitive-FS collisions (nEMO/nemo, RAVDESS/ravdess)
+    return Path(index_dir) / f"study{study}" / f"{corpus}.parquet"
+
+
 def gold_lookup(study: int, corpus: str, index_dir: Path) -> dict[str, Emotion]:
     import pyarrow.parquet as pq
-    path = Path(index_dir) / f"{corpus}.parquet"
+    path = _index_path(index_dir, study, corpus)
     cols = pq.read_table(path, columns=["sample_id", "gold_raw"]).to_pydict()
     out: dict[str, Emotion] = {}
     for sid, raw in zip(cols["sample_id"], cols["gold_raw"]):
@@ -87,7 +92,7 @@ def _study2(bundle: AnalysisBundle, store: PredictionStore, index_dir: Path) -> 
     pl_acc = None  # (k_correct, n) for the PL split, for PL-vs-others two-proportion
     per_lang_acc: list[tuple[str, str, int, int]] = []  # (split, iso, k, n)
     for split in studies.STUDY2_SPLITS:
-        idx_path = Path(index_dir) / f"{split}.parquet"
+        idx_path = _index_path(index_dir, 2, split)
         if not idx_path.exists():
             _warn(f"study 2: no index for split {split!r}, skipping")
             continue
@@ -129,7 +134,7 @@ def analyze_study(study, *, results_root: Path, index_dir: Path) -> AnalysisBund
     for corpus in corpora:
         if study == 2:
             continue  # study 2 handled corpus-wise in _study2
-        idx_path = index_dir / f"{corpus}.parquet"
+        idx_path = _index_path(index_dir, study, corpus)
         if not idx_path.exists():
             _warn(f"no index for corpus {corpus!r} ({idx_path}); skipping")
             continue

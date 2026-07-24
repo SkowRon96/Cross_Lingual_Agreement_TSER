@@ -12,7 +12,8 @@ from app.predict.store import PredictionStore
 def _predict(args) -> int:
     settings = Settings()
     results_root = Path(args.results_root) if args.results_root else settings.results_root
-    index = Path(args.index) if args.index else settings.index_dir / f"{args.corpus}.parquet"
+    index = (Path(args.index) if args.index
+             else settings.index_dir / f"study{args.study}" / f"{args.corpus}.parquet")
     samples = read_index(index)
     model = build_model(args.model)
     store = PredictionStore(results_root / "predictions")
@@ -30,6 +31,48 @@ def _import_predictions(args) -> int:
     store = PredictionStore(results_root / "predictions")
     n = import_predictions(Path(args.file), store, args.study, args.corpus)
     print(f"imported {n} speech_zeroshot predictions for {args.corpus} (study {args.study})")
+    return 0
+
+
+def _print_ingest_report(rep) -> None:
+    print(f"  {rep.corpus}: total={rep.total} kept={rep.kept} dropped={rep.dropped}")
+    if rep.dropped_labels:
+        drops = ", ".join(f"{k}={v}" for k, v in sorted(rep.dropped_labels.items()))
+        print(f"    dropped labels: {drops}")
+
+
+def _save_ingest_report(rep, out_dir: Path) -> None:
+    import json
+    p = out_dir / f"{rep.corpus}.report.json"
+    p.write_text(json.dumps(rep.model_dump(), indent=2, sort_keys=True))
+
+
+def _ingest(args) -> int:
+    from app.data.ingest import ingest_corpus
+    from app.data.loaders.cameo import corpus_from_path, load_cameo_split
+    from app.data.loaders.nemo import load_nemo
+    from app.data.ravdess import load_ravdess
+    settings = Settings()
+    results_root = Path(args.results_root) if args.results_root else settings.results_root
+    # Index is namespaced by study: on a case-insensitive filesystem (macOS APFS)
+    # study-1 "nEMO" and study-2 "nemo" (and RAVDESS/ravdess) would otherwise be the
+    # same file and clobber each other.
+    if args.corpus == "nemo":
+        out_dir = results_root / "index" / "study1"
+        reports = [ingest_corpus(load_nemo(settings.nemo_parquets()), "nEMO", out_dir)]
+    elif args.corpus == "ravdess":
+        out_dir = results_root / "index" / "study1"
+        reports = [ingest_corpus(
+            load_ravdess(settings.ravdess_audio_dir, settings.ravdess_video_dir),
+            "RAVDESS", out_dir)]
+    elif args.corpus == "cameo":
+        out_dir = results_root / "index" / "study2"
+        reports = [ingest_corpus(load_cameo_split(path), corpus_from_path(path), out_dir)
+                   for path in settings.cameo_parquets()]
+    for rep in reports:
+        _print_ingest_report(rep)
+        _save_ingest_report(rep, out_dir)
+    print(f"ingest {args.corpus}: index + harmonization reports written to {out_dir}")
     return 0
 
 
@@ -61,6 +104,10 @@ def _report(args) -> int:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     sub = parser.add_subparsers(dest="command", required=True)
+    ing = sub.add_parser("ingest", help="Build the corpus index (resolve gold, report harmonization)")
+    ing.add_argument("--corpus", required=True, choices=["nemo", "cameo", "ravdess"])
+    ing.add_argument("--results-root", default=None)
+    ing.set_defaults(func=_ingest)
     p = sub.add_parser("predict", help="Run a model over a corpus index")
     p.add_argument("--study", type=int, required=True)
     p.add_argument("--corpus", required=True)
