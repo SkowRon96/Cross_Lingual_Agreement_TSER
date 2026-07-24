@@ -41,7 +41,10 @@ _FACTORIES: dict[str, Callable[[], EmotionModel]] = {
         "en_face_vit", "trpakov/vit-face-expression", cache_dir=_settings.hf_home),
     "speech_cnn_tf_ravdess": lambda: CNNTransformerSpeechModel(
         "speech_cnn_tf_ravdess",
-        _settings.speech_weights_dir / "cnn_transf_parallel_model_v1.pt", RAVDESS8_LABELS),
+        # cnn_transf_parallel_model.pt (2022) is the properly-trained checkpoint (0.85 on
+        # the full RAVDESS corpus). The Oct-2024 "_v1" re-save is broken (0.27, near-chance)
+        # and overwrote the good weights for nEMO — see spec §9.2 verification.
+        _settings.speech_weights_dir / "cnn_transf_parallel_model.pt", RAVDESS8_LABELS),
     "speech_cnn_tf_nemo": lambda: CNNTransformerSpeechModel(
         "speech_cnn_tf_nemo",
         _settings.speech_weights_dir / "cnn_transf_parallel_model_nemo_v1.pt", NEMO6_LABELS),
