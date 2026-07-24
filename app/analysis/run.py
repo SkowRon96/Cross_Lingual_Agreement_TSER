@@ -100,6 +100,11 @@ def _study2(bundle: AnalysisBundle, store: PredictionStore, index_dir: Path) -> 
         pt = _load(store, 2, split, text_m)
         ps = _load(store, 2, split, speech_m)
         iso = studies.SPLIT_LANG[split]
+        # per-language baselines (accuracy/macro-F1/confusion) for both modalities
+        for mid, preds in ((text_m, pt), (speech_m, ps)):
+            if preds is not None:
+                bundle.baselines.append(
+                    metrics.baseline(preds, gold, mid, split, studies.MODALITY[mid]))
         if pt is not None and ps is not None:
             la, lb, _ = aligned_pairs(pt, ps, gold,
                                       studies.SUPPORTED[text_m], studies.SUPPORTED[speech_m])
