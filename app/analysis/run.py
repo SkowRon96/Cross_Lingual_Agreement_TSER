@@ -13,7 +13,7 @@ import numpy as np
 from app.analysis import bootstrap, conflicts, correlation, lang_features, metrics
 from app.analysis.agreement import agreement, aligned_pairs, cohen_kappa, fleiss_kappa
 from app.analysis.results import (
-    AnalysisBundle, BootstrapCI, FleissResult, Study2LangRow)
+    AnalysisBundle, BootstrapCI, FleissResult, Study2LangRow, TestResult)
 from app.analysis.tests import correctness, mcnemar, two_proportion
 from app.config import studies
 from app.config.emotions import Emotion
