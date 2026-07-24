@@ -56,9 +56,17 @@ class CNNTransformerSpeechModel:
         b, c, h, w = X.shape
         Xf = StandardScaler().fit_transform(X.reshape(b, -1))  # per-corpus refit
         X = Xf.reshape(b, c, h, w).astype("float32")
+        # Scaler is fit on the whole corpus above (correct), but the conv2d forward on
+        # all samples at once can OOM (4481 x 1 x 128 x 563 -> ~19 GiB). Forward in
+        # mini-chunks; the model is in eval() so BatchNorm uses running stats and the
+        # result is numerically identical to a single full-batch forward.
+        xt = torch.from_numpy(X)
+        chunk = 256
         with torch.no_grad():
-            _, soft = self.model(torch.from_numpy(X).to(self.device))
-        probs = soft.cpu().numpy()
+            probs = np.concatenate([
+                self.model(xt[start:start + chunk].to(self.device))[1].cpu().numpy()
+                for start in range(0, b, chunk)
+            ], axis=0)
         return [
             to_prediction(s.sample_id, self.model_id, self.modality,
                           self.native_labels, probs[i].tolist(), self.mapper)
