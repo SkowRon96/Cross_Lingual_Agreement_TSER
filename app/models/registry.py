@@ -39,15 +39,16 @@ _FACTORIES: dict[str, Callable[[], EmotionModel]] = {
         label_overrides={"none of them": Emotion.NEUTRAL}),
     "en_face_vit": lambda: ViTFaceModel(
         "en_face_vit", "trpakov/vit-face-expression", cache_dir=_settings.hf_home),
+    # _v2 = retrained from the corrected notebooks (augmentation-label bug fixed, NumPy-2
+    # scaler fix, seeded split, early stopping). Honest held-out: RAVDESS 0.713 (vs the
+    # 2022 file's 0.613), nEMO 0.887 (vs the broken _v1's 0.287). Both are LEAKY/secondary
+    # models (trained on RAVDESS/nEMO); the clean/headline speech model is speech_zeroshot.
     "speech_cnn_tf_ravdess": lambda: CNNTransformerSpeechModel(
         "speech_cnn_tf_ravdess",
-        # cnn_transf_parallel_model.pt (2022) is the properly-trained checkpoint (0.85 on
-        # the full RAVDESS corpus). The Oct-2024 "_v1" re-save is broken (0.27, near-chance)
-        # and overwrote the good weights for nEMO — see spec §9.2 verification.
-        _settings.speech_weights_dir / "cnn_transf_parallel_model.pt", RAVDESS8_LABELS),
+        _settings.speech_weights_dir / "cnn_transf_parallel_model_v2.pt", RAVDESS8_LABELS),
     "speech_cnn_tf_nemo": lambda: CNNTransformerSpeechModel(
         "speech_cnn_tf_nemo",
-        _settings.speech_weights_dir / "cnn_transf_parallel_model_nemo_v1.pt", NEMO6_LABELS),
+        _settings.speech_weights_dir / "cnn_transf_parallel_model_nemo_v2.pt", NEMO6_LABELS),
     "en_speech_iemocap": lambda: SpeechBrainIEMOCAP("en_speech_iemocap", cache_dir=_settings.hf_home),
     "pl_text_lstm": lambda: LSTMTextModel(
         "pl_text_lstm", _settings.lstm_model_dir, _settings.tf_python, _settings.lstm_infer_script),
