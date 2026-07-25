@@ -83,6 +83,15 @@ def iter_ravdess(audio_dir):
         yield f"RAVDESS:{key}", "RAVDESS", None, wav
 
 
+def iter_meld(meld_audio_dir):
+    # extracted MELD wavs: {meld_audio_dir}/{split}/diaD_uttU.wav ; sample_id must match
+    # app/data/loaders/meld.py -> MELD:{split}:diaD_uttU
+    for split in ("train", "dev", "test"):
+        for wav in sorted(glob.glob(os.path.join(meld_audio_dir, split, "*.wav"))):
+            key = os.path.basename(wav)[:-4]
+            yield f"MELD:{split}:{key}", "MELD", None, wav
+
+
 def load_audio(audio_bytes, wav_path):
     if wav_path is not None:
         data, sr = sf.read(wav_path, dtype="float32", always_2d=False)
@@ -137,6 +146,7 @@ def main():
     ap.add_argument("--cameo-dir", default=None)
     ap.add_argument("--nemo-dir", default=None)
     ap.add_argument("--ravdess-audio-dir", default=None)
+    ap.add_argument("--meld-audio-dir", default=None)
     ap.add_argument("--out", default="qwen_predictions.parquet")
     ap.add_argument("--model", default="Qwen/Qwen2-Audio-7B-Instruct")
     args = ap.parse_args()
@@ -159,6 +169,8 @@ def main():
         sources.append(iter_nemo(args.nemo_dir))
     if args.ravdess_audio_dir:
         sources.append(iter_ravdess(args.ravdess_audio_dir))
+    if args.meld_audio_dir:
+        sources.append(iter_meld(args.meld_audio_dir))
 
     buffer, n = [], 0
     for source in sources:

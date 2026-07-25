@@ -88,6 +88,23 @@ done
 > (`RAVDESS:...`) and standalone nEMO parquets (`nEMO:...`). The script emits all of them; the
 > import commands above route each to the right study.
 
+## 5. MELD (added later — EN dialogue, Study 1)
+
+MELD audio is extracted on the Mac (`scripts/extract_meld_audio.py` -> 16 kHz mono wavs), so
+you transfer only the wavs (~1.5 GB), not the 10 GB of video.
+
+1. Transfer `datasets/MELD/audio/` (with its `train/`, `dev/`, `test/` subfolders) to Windows,
+   e.g. `C:\qwen\data\MELD\audio\`.
+2. Run (resumable; you can point it only at MELD to add to an existing output):
+```powershell
+python run_qwen.py --meld-audio-dir data\MELD\audio --out qwen_predictions.parquet
+```
+3. Copy `qwen_predictions.parquet` back, then on the Mac:
+```bash
+.venv/bin/python -m app.cli import-predictions --file qwen_predictions.parquet --study 1 --corpus MELD
+```
+`sample_id` is `MELD:{split}:diaD_uttU`, matching the MELD loader.
+
 ## Notes / limitations
 
 - Zero-shot confidence is unreliable (spec §2), so we import a **hard label** only
