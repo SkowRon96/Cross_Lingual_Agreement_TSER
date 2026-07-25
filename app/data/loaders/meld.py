@@ -31,8 +31,13 @@ def _read_csv(path: Path) -> list[dict]:
         return list(csv.DictReader(f))
 
 
-def load_meld(raw_root: Path, audio_root: Path) -> list[Sample]:
-    """raw_root = .../MELD/MELD.Raw ; audio_root = dir of extracted wavs ({split}/diaD_uttU.wav)."""
+def load_meld(raw_root: Path, audio_root: Path, require_audio: bool = False) -> list[Sample]:
+    """raw_root = .../MELD/MELD.Raw ; audio_root = dir of extracted wavs ({split}/diaD_uttU.wav).
+
+    require_audio=True (used at ingest, after extraction) also drops utterances whose wav is
+    missing — e.g. a corrupt source mp4 that ffmpeg could not decode — so every indexed
+    sample is usable by all modalities.
+    """
     raw_root = Path(raw_root)
     audio_root = Path(audio_root)
     samples: list[Sample] = []
@@ -40,15 +45,18 @@ def load_meld(raw_root: Path, audio_root: Path) -> list[Sample]:
         for r in _read_csv(raw_root / csv_rel):
             key = f"dia{r['Dialogue_ID']}_utt{r['Utterance_ID']}"
             video = raw_root / vdir / f"{key}.mp4"
+            wav = audio_root / split / f"{key}.wav"
             if not video.exists():
                 continue  # a couple of MELD utterances have no video file — skip (fail-safe)
+            if require_audio and not wav.exists():
+                continue  # corrupt/undecodable source -> no wav extracted -> skip uniformly
             samples.append(Sample(
                 sample_id=f"MELD:{split}:{key}",
                 studies=[1],
                 corpus="MELD",
                 language="en",
                 text=r["Utterance"],
-                audio=AudioRef(wav_path=audio_root / split / f"{key}.wav"),
+                audio=AudioRef(wav_path=wav),
                 has_face=True,
                 video_path=video,
                 gold_raw=r["Emotion"],

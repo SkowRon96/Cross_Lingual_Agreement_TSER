@@ -62,7 +62,7 @@ def _ingest(args) -> int:
         out_dir = results_root / "index" / "study1"
         meld_root = settings.datasets_root / "MELD" / "MELD.Raw"
         audio_root = settings.datasets_root / "MELD" / "audio"
-        reports = [ingest_corpus(load_meld(meld_root, audio_root), "MELD", out_dir)]
+        reports = [ingest_corpus(load_meld(meld_root, audio_root, require_audio=True), "MELD", out_dir)]
     elif args.corpus == "nemo":
         out_dir = results_root / "index" / "study1"
         reports = [ingest_corpus(load_nemo(settings.nemo_parquets()), "nEMO", out_dir)]
