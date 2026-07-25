@@ -57,7 +57,13 @@ def _ingest(args) -> int:
     # Index is namespaced by study: on a case-insensitive filesystem (macOS APFS)
     # study-1 "nEMO" and study-2 "nemo" (and RAVDESS/ravdess) would otherwise be the
     # same file and clobber each other.
-    if args.corpus == "nemo":
+    if args.corpus == "meld":
+        from app.data.loaders.meld import load_meld
+        out_dir = results_root / "index" / "study1"
+        meld_root = settings.datasets_root / "MELD" / "MELD.Raw"
+        audio_root = settings.datasets_root / "MELD" / "audio"
+        reports = [ingest_corpus(load_meld(meld_root, audio_root), "MELD", out_dir)]
+    elif args.corpus == "nemo":
         out_dir = results_root / "index" / "study1"
         reports = [ingest_corpus(load_nemo(settings.nemo_parquets()), "nEMO", out_dir)]
     elif args.corpus == "ravdess":
@@ -105,7 +111,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     sub = parser.add_subparsers(dest="command", required=True)
     ing = sub.add_parser("ingest", help="Build the corpus index (resolve gold, report harmonization)")
-    ing.add_argument("--corpus", required=True, choices=["nemo", "cameo", "ravdess"])
+    ing.add_argument("--corpus", required=True, choices=["nemo", "cameo", "ravdess", "meld"])
     ing.add_argument("--results-root", default=None)
     ing.set_defaults(func=_ingest)
     p = sub.add_parser("predict", help="Run a model over a corpus index")

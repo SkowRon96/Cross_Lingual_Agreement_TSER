@@ -153,7 +153,7 @@ def analyze_study(study, *, results_root: Path, index_dir: Path) -> AnalysisBund
             present[mid] = preds
             bundle.baselines.append(
                 metrics.baseline(preds, gold, mid, corpus, studies.MODALITY[mid]))
-        lang = "PL" if corpus == "nEMO" else ("EN" if corpus == "RAVDESS" else None)
+        lang = "PL" if corpus == "nEMO" else ("EN" if corpus in ("RAVDESS", "MELD") else None)
         headline_pair = None
         if lang:
             headline_pair = frozenset({studies.HEADLINE[(lang, "text")],
