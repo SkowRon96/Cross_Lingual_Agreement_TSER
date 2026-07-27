@@ -123,23 +123,33 @@ def _cm_rows(study, corpus, mid):
 
 
 def d3():
-    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
-    for ax, (corpus, title) in zip(axes, [("RAVDESS", "RAVDESS (acted, fixed sentences)"),
-                                          ("MELD", "MELD (real dialogue)")]):
-        m, cols, acc = _cm_rows(1, corpus, "en_text_hartmann")
-        im = ax.imshow(m, cmap="Blues", vmin=0, vmax=1)
-        ax.set_xticks(range(len(cols)), cols, rotation=45, ha="right")
-        ax.set_yticks(range(len(ORDER)), ORDER)
-        ax.set_xlabel("predicted"); ax.set_ylabel("gold")
-        ax.set_title(f"{title}\nen_text_hartmann, acc={acc:.2f}")
-        for i in range(len(ORDER)):
-            for j in range(len(cols)):
-                if m[i, j] > 0.01:
-                    ax.text(j, i, f"{m[i,j]:.2f}", ha="center", va="center",
-                            color="white" if m[i, j] > 0.5 else "black", fontsize=7)
-    fig.colorbar(im, ax=axes, fraction=0.03, pad=0.02, label="row-normalized (recall)")
-    style.save_fig(fig, OUT / "d3_text_cm_contrast")
+    # autolayout (tight_layout) + a shared colorbar fight each other and squash the panels;
+    # use constrained_layout with autolayout OFF, and give each panel its own colorbar.
+    with plt.rc_context({"figure.autolayout": False}):
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6), constrained_layout=True)
+        for ax, (corpus, title) in zip(axes, [("RAVDESS", "RAVDESS (acted, fixed sentences)"),
+                                              ("MELD", "MELD (real dialogue)")]):
+            m, cols, acc = _cm_rows(1, corpus, "en_text_hartmann")
+            im = ax.imshow(m, cmap="Blues", vmin=0, vmax=1, aspect="auto")
+            ax.set_xticks(range(len(cols))); ax.set_xticklabels(cols, rotation=45, ha="right")
+            ax.set_yticks(range(len(ORDER))); ax.set_yticklabels(ORDER)
+            ax.set_xlabel("predicted"); ax.set_ylabel("gold")
+            ax.set_title(f"{title}\nen_text_hartmann, acc={acc:.2f}")
+            for i in range(len(ORDER)):
+                for j in range(len(cols)):
+                    if m[i, j] > 0.01:
+                        ax.text(j, i, f"{m[i,j]:.2f}", ha="center", va="center",
+                                color="white" if m[i, j] > 0.5 else "black", fontsize=7)
+            fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="recall")
+        fig.savefig((OUT / "d3_text_cm_contrast").with_suffix(".pdf"))
+        fig.savefig((OUT / "d3_text_cm_contrast").with_suffix(".png"), dpi=300)
+        plt.close(fig)
 
 
-d1(); d2(); d3()
+import sys
+_only = sys.argv[1] if len(sys.argv) > 1 else None
+if _only == "d1": d1()
+elif _only == "d2": d2()
+elif _only == "d3": d3()
+else: d1(); d2(); d3()
 print(f"\n-> {OUT}/*.{{pdf,png}}")
