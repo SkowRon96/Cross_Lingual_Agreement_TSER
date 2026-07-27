@@ -39,10 +39,12 @@ ROSTER: dict[tuple[int, str], list[str]] = {
     (1, "RAVDESS"): ["en_text_hartmann", "mling_tabularis", "speech_zeroshot",
                      "speech_cnn_tf_ravdess", "en_speech_iemocap", "en_face_vit"],
     # MELD (real-dialogue EN, Study 1): natural emotional text -> measurable text<->speech
-    # agreement + acted-vs-natural contrast with RAVDESS. Face deferred (multi-speaker frames).
+    # agreement + acted-vs-natural contrast with RAVDESS.
     # speech_cnn_tf_ravdess on MELD is CROSS-dataset (not leaky) -> a generalization probe.
+    # en_face_vit on MELD = LARGEST-FACE best-effort: multi-speaker frames / cutaways mean the
+    # detected face may not be the utterance speaker -> NOISY, SECONDARY, never headline.
     (1, "MELD"): ["en_text_hartmann", "mling_tabularis", "speech_zeroshot",
-                  "en_speech_iemocap", "speech_cnn_tf_ravdess"],
+                  "en_speech_iemocap", "speech_cnn_tf_ravdess", "en_face_vit"],
 }
 STUDY2_SPLITS: list[str] = ["cafe", "crema_d", "emns", "emozionalmente", "enterface",
                             "jl_corpus", "mesd", "nemo", "oreau", "pavoque", "ravdess",
