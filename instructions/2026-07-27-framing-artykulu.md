@@ -26,6 +26,10 @@ kontrolowanym kontrastem (ten sam język EN, te same modalności, różni się t
   na MELD używa wszystkich 7 emocji (acc 0.54, macro-F1 0.42);
 - **odwrócenie konfliktów**: gdy modalności się różnią, na RAVDESS bliżej gold jest **mowa**
   (956 vs 119), na MELD **tekst** (4065 vs 1889).
+- **potwierdzenie „odstającego" tekstu (trimodalnie):** na RAVDESS jedyna realna zgodność jest
+  **mowa↔twarz κ=0.297**, a text↔speech i text↔face = 0.00 → sygnał emocjonalny jest w mowie i
+  twarzy, tekst nie zgadza się z niczym. Na MELD odwrotnie (tekst↔mowa 0.20; twarz largest-face
+  ≈ szum 0.04). „Który kanał niesie sygnał" zależy od korpusu.
 - **Wniosek dla pola TSER:** aktorskie korpusy SER (stałe/neutralne zdania) są nieprzydatne do
   badań zgodności text↔speech — ich warstwa językowa jest emocjonalnie pusta.
 
@@ -41,10 +45,21 @@ nisko). Dodatkowo: **preprocessing audio (resampling) mierzalnie wpływa** na wy
 CAMEO, 8 języków, κ text↔speech per język; pozycja PL; κ zależy od emocjonalności tekstu korpusu
 bardziej niż od języka. **n=8 → wyłącznie eksploracyjne/opisowe, bez mocy inferencyjnej.**
 
-**C4 (infrastrukturalny/rzetelnościowy — do metod/aneksu).**
-Odtwarzalny potok (ingest→predict→analyze→report), harmonizacja etykiet Ekman-6+neutral z jawnym
-raportowaniem odrzuceń non-Ekman, reguła wspólnego wsparcia z wykluczeniami, weryfikacja i naprawa
-autorskich modeli mowy (`_v2`, held-out nEMO 0.887 / RAVDESS 0.713).
+**C4 (narzędziowy/reprodukowalność — realny wkład, nie tylko aneks).**
+**Reużywalny, korpus- i model-agnostyczny framework do pomiaru zgodności międzymodalnej w
+rozpoznawaniu emocji** — udokumentowany w [`docs/PIPELINE.md`](../docs/PIPELINE.md). Wartość to
+**metodologia zaklęta w etapach** (ingest→predict→analyze→report): harmonizacja do przestrzeni
+kanonicznej (Ekman-6+neutral) z fail-loud i jawnym raportowaniem odrzuceń non-Ekman; **reguła
+wspólnego wsparcia** (κ liczone tylko na klasach wspieranych przez oba modele, z raportem
+`n_used/n_excluded`); **role modeli** (czyste/headline vs leaky/secondary) egzekwowane wszędzie;
+cache predykcji wersjonowany sygnaturą configu; statystyki (Cohen/Fleiss κ, bootstrap CI,
+McNemar, dwie proporcje/χ², konflikty); deterministyczny raport. Dodanie nowego korpusu = 1 loader,
+nowego modelu = 1 wpis w registry, modelu spoza maszyny (GPU-only) = `import-predictions`.
+Zawiera też weryfikację i naprawę autorskich modeli mowy (`_v2`, held-out nEMO 0.887 / RAVDESS 0.713).
+- **Opcja:** wydać jako **companion repo** przy artykule (recenzenci cenią). Do „software-paper"
+  (np. JOSS) trzeba by dopolerować pakowanie — to osobny, mały nakład.
+- **Uczciwie:** to nie nowość ML (modele gotowe), lecz reużywalny harness + metodologia; kod
+  badawczy, nie zpakowana biblioteka.
 
 ## 3. Proponowana struktura + mapowanie wynik → artefakt
 
@@ -54,10 +69,11 @@ autorskich modeli mowy (`_v2`, held-out nEMO 0.887 / RAVDESS 0.713).
 | Dane | 4 zbiory (nEMO, RAVDESS, MELD, CAMEO), 58 975 próbek | `datasets_overview.md` (Tab. 1) |
 | Modele | 10 modeli, 3 modalności, dokładność autorów | `models_overview.md` (Tab. 2) |
 | Metody | harmonizacja, wspólne wsparcie, κ/bootstrap/McNemar/chi², leakage | `*.report.json`, opis §4/§5.4 |
-| **Wyniki C1** | κ RAVDESS 0.00 vs MELD 0.20; konflikty; baseline'y | **`d1_headline_kappa`**, **`d3_text_cm_contrast`**, `conflict_*`, `study1/kappa`, `study1/baselines` |
+| **Wyniki C1** | κ RAVDESS 0.00 vs MELD 0.20; trimodalnie (speech↔face 0.30); konflikty; baseline'y | **`article/cross_modal_kappa`**, **`article/modality_baselines`**, **`d1_headline_kappa`**, **`d3_text_cm_contrast`**, `conflict_*` |
 | **Wyniki C2** | Qwen 0.24–0.85; kolaps na trudnych | **`d2_qwen_accuracy_collapse`**, `cm_*_speech_zeroshot` |
 | Wyniki C3 | κ per język, PL, typologia | `study2/study2`, `study2_scatter` |
-| Wyniki (uzup.) | istotność; twarz (RAVDESS trimod.) | `study1/pl_vs_en`, Fleiss (RAVDESS trio ≈ 0) |
+| Wyniki (uzup.) | istotność; twarz (RAVDESS trimod.); robustness bez neutral | `study1/pl_vs_en`, Fleiss (RAVDESS trio ≈ 0), kontrola §6 |
+| **C4 (narzędzie)** | framework: komponenty, użycie, rozszerzanie | [`docs/PIPELINE.md`](../docs/PIPELINE.md), `datasets_overview`, `models_overview` |
 | Ograniczenia | poniżej | — |
 | Aneks | per-emocja, 26 macierzy CAMEO | `per_emotion_breakdown.csv`, `figures/study2/cm_*` |
 
@@ -85,6 +101,10 @@ autorskich modeli mowy (`_v2`, held-out nEMO 0.887 / RAVDESS 0.713).
 > multimodalnej percepcji emocji w robotach społecznych.
 
 ## 6. Ograniczenia (jawnie)
+
+**Kontrola odpornościowa (wynik, nie ograniczenie):** wykluczenie próbek gold=neutral NIE zmienia
+κ text↔speech (RAVDESS 0.00→0.00, MELD 0.202→0.203, nEMO 0.015→0.013, mimo że neutral to ~połowa
+MELD) → niskie κ nie jest artefaktem dominującej klasy neutralnej.
 
 - **Cross-lingual pozostaje słabo rozstrzygnięty:** MELD ratuje mierzalność tylko dla angielskiego;
   strona polska/wielojęzyczna (nEMO, CAMEO) nadal cierpi na pusty/aktorski tekst → wątek opisowy.
