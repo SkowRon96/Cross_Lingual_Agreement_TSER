@@ -105,6 +105,24 @@ python run_qwen.py --meld-audio-dir data\MELD\audio --out qwen_predictions.parqu
 ```
 `sample_id` is `MELD:{split}:diaD_uttU`, matching the MELD loader.
 
+## 6. Resampler-fix re-run (standalone nEMO + RAVDESS ONLY)
+
+The first run resampled 48 kHz RAVDESS / 24 kHz nEMO to 16 kHz with a crude linear method,
+which measurably lowered Qwen accuracy vs natively-16 kHz audio (RAVDESS 0.78 vs CAMEO's
+16 kHz ravdess 0.85). `run_qwen.py` now uses `librosa.resample` (soxr_hq). Re-run ONLY the
+two standalone corpora (CAMEO + MELD are already 16 kHz — do NOT re-run them).
+
+```powershell
+pip install librosa
+# fresh output so resume doesn't skip the old (crude-resampled) predictions:
+python run_qwen.py --nemo-dir data\nEMO\data --ravdess-audio-dir data\RAVDESS\Audio_Speech_Actors_01-24 --out qwen_std_v2.parquet
+```
+Copy `qwen_std_v2.parquet` back, then on the Mac re-import (overwrites the two store entries):
+```bash
+.venv/bin/python -m app.cli import-predictions --file qwen_std_v2.parquet --study 1 --corpus nEMO
+.venv/bin/python -m app.cli import-predictions --file qwen_std_v2.parquet --study 1 --corpus RAVDESS
+```
+
 ## Notes / limitations
 
 - Zero-shot confidence is unreliable (spec §2), so we import a **hard label** only

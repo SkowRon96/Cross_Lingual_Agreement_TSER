@@ -100,9 +100,11 @@ def load_audio(audio_bytes, wav_path):
     if data.ndim > 1:
         data = data.mean(axis=1)
     if sr != TARGET_SR:
-        # lightweight linear resample to 16 kHz (processor expects 16 kHz)
-        n = int(round(len(data) * TARGET_SR / sr))
-        data = np.interp(np.linspace(0, len(data), n, endpoint=False), np.arange(len(data)), data).astype("float32")
+        # high-quality resample to 16 kHz (librosa soxr_hq). A crude linear resample
+        # (np.interp) measurably lowers zero-shot accuracy vs natively-16k audio, so use
+        # a proper resampler for parity with the 16 kHz corpora (CAMEO, MELD).
+        import librosa
+        data = librosa.resample(data.astype("float32"), orig_sr=sr, target_sr=TARGET_SR)
     return np.ascontiguousarray(data, dtype="float32")
 
 
