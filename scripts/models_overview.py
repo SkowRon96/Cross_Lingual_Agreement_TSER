@@ -23,7 +23,8 @@ ROWS = [
      "macro-F1 0.839 / subset-acc 0.640", "HF card: 11-class multi-label, 11.5k test, τ=0.5"),
     ("xlmr_pooled10", "poltextlab/xlm-roberta pooled-emotions10", "text", "multilingual (EU)",
      "anger,fear,disgust,sadness,happiness,neutral (no surprise)",
-     "not published", "HF card gated (HTTP 401) — not retrievable"),
+     "0.82 acc / macro-F1 0.83", "poltextlab pooled-emotions10 card: 10-class (Neutral/Anger/Fear/"
+     "Disgust/Sadness/Joy/Hope/Pride/Enthusiasm/None); v3 variant may differ slightly"),
     ("pl_text_roberta6 ⚠", "visegradmedia/Emotion_RoBERTa_polish6", "text", "pl",
      "anger,fear,disgust,sadness,happiness,neutral (no surprise)",
      "0.82 acc / macro-F1 0.85", "HF card (⚠ label order ASSUMED by us; secondary model)"),
