@@ -23,6 +23,7 @@ from run_qwen import (
     build_prompt,
     classify,
     iter_cameo,
+    iter_meld,
     iter_nemo,
     iter_ravdess,
     load_audio,
@@ -35,6 +36,7 @@ def main():
     ap.add_argument("--cameo-dir", default=None)
     ap.add_argument("--nemo-dir", default=None)
     ap.add_argument("--ravdess-audio-dir", default=None)
+    ap.add_argument("--meld-audio-dir", default=None)
     ap.add_argument("--model", default="Qwen/Qwen2-Audio-7B-Instruct")
     ap.add_argument("--n", type=int, default=3, help="clips to test per source")
     args = ap.parse_args()
@@ -64,6 +66,8 @@ def main():
         sources.append(("nEMO", iter_nemo(args.nemo_dir)))
     if args.ravdess_audio_dir:
         sources.append(("RAVDESS", iter_ravdess(args.ravdess_audio_dir)))
+    if args.meld_audio_dir:
+        sources.append(("MELD", iter_meld(args.meld_audio_dir)))
     if not sources:
         print("no source given — pass at least one of --cameo-dir / --nemo-dir / --ravdess-audio-dir")
         return
