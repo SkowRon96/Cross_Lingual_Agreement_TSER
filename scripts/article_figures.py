@@ -77,7 +77,8 @@ def d2():
         preds = _preds(study, corpus, "speech_zeroshot")
         b = baseline(preds, gold, "speech_zeroshot", corpus, "speech")
         c = Counter(p.pred.value for p in preds if p.pred)
-        data.append((b.accuracy, f"{corpus} ({iso})", iso, c))
+        tag = "S1" if study == 1 else "S2·CAMEO"
+        data.append((b.accuracy, f"{corpus} ({iso}, {tag})", iso, c))
     data.sort(key=lambda t: t[0], reverse=True)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
     y = np.arange(len(data))
