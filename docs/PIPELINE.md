@@ -29,17 +29,36 @@ This tool factors out the reusable parts:
 
 ```mermaid
 flowchart LR
-    D[datasets] -->|loader| ING[ingest]
-    ING -->|index + gold + harmonization report| IDX[(results/index)]
-    IDX --> PRED[predict]
-    REG[model registry] --> PRED
-    PRED -->|cached predictions| STORE[(results/predictions)]
-    EXT[offline / GPU models] -->|import-predictions| STORE
-    IDX --> AN[analyze]
+    D["DATASETS"] -- LOAD --> ING["INGESTOR"]
+    ING -- INDEXING / CLASS HARMONIZATION --> IDX[("INDEXED DATASETS")]
+    IDX --> AN["ANALYZER"] & PRED["PREDICTOR"]
+    REG["CLASSIFICATION MODELS"] --> PRED
+    PRED -- CACHE PREDICTIONS --> STORE[("PREDICTIONS")]
+    EXT["EXTERNAL MODELS / PREDICTIONS"] -- IMPORT PREDICTIONS --> STORE
     STORE --> AN
-    AN -->|Pydantic results JSON + tidy CSV| RES[(results/analysis)]
-    RES --> REP[report]
-    REP --> FIG[figures PDF+PNG] & TAB[tables CSV/MD/LaTeX/PNG]
+    AN L_AN_RES_0@-- EXPORT RESULTS (JSON/CSV) --> RES[("ANALYSIS RESULTS")]
+    REP["REPORT GENERATOR"] --> FIG["FIGURES"] & n2["TABLES"]
+    RES --> REP
+
+    n2@{ shape: rect}
+     D:::Class_01
+     ING:::Class_02
+     IDX:::Class_03
+     AN:::Class_02
+     PRED:::Class_02
+     REG:::Class_01
+     STORE:::Class_03
+     EXT:::Class_01
+     RES:::Class_03
+     REP:::Class_02
+     FIG:::Class_04
+     n2:::Class_04
+    classDef Class_01 fill:#DDEEE7,font-size:19px,font-weight:bold
+    classDef Class_04 fill:#E6F2E3,font-size:19px,font-weight:bold
+    classDef Class_03 fill:#F4E8D5,font-size:19px,font-weight:bold
+    classDef Class_02 fill:#E7E2F3,font-size:19px,font-weight:bold
+
+    L_AN_RES_0@{ animation: none }
 ```
 
 Five CLI stages: **`ingest → predict → analyze → report`** (+ `import-predictions` for models run
