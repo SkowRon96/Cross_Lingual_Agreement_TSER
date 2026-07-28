@@ -61,12 +61,15 @@ flowchart LR
     L_AN_RES_0@{ animation: none }
 ```
 
-Five CLI stages: **`ingest → predict → analyze → report`** (+ `import-predictions` for models run
-off-box, e.g. a GPU-only audio-LLM).
+The diagram's four processors map one-to-one to the CLI stages —
+**Ingestor (`ingest`) → Predictor (`predict`) → Analyzer (`analyze`) → Report generator (`report`)** —
+with `import-predictions` bringing in *External models / predictions* run off-box (e.g. a GPU-only
+audio-LLM). Data stores in the diagram are the outputs on disk: *Indexed datasets* = `results/index`,
+*Predictions* = `results/predictions`, *Analysis results* = `results/analysis`.
 
 ## The four stages, in detail
 
-### 1. `ingest` — raw datasets → gold-resolved corpus index
+### 1. Ingestor (`ingest`) — DATASETS → INDEXED DATASETS
 
 Reads one corpus, resolves every utterance's gold label into the canonical space, and writes an
 index plus a harmonization report. Components:
@@ -83,7 +86,7 @@ index plus a harmonization report. Components:
 Input: `datasets/…` → Output: `results/index/study{N}/{corpus}.parquet` + `{corpus}.report.json`.
 CLI: `ingest --corpus nemo|ravdess|cameo|meld`.
 
-### 2. `predict` — models over the index (cached, versioned)
+### 2. Predictor (`predict`) — CLASSIFICATION MODELS over INDEXED DATASETS → PREDICTIONS
 
 Runs each model over a corpus and caches its predictions. Components:
 
@@ -105,7 +108,7 @@ Runs each model over a corpus and caches its predictions. Components:
 Input: index + registry → Output: `results/predictions/study{N}/{corpus}/{model}.parquet`.
 CLI: `predict --study N --corpus X --model all|<id>`, `import-predictions`.
 
-### 3. `analyze` — predictions + gold → typed statistics
+### 3. Analyzer (`analyze`) — INDEXED DATASETS + PREDICTIONS → ANALYSIS RESULTS
 
 Computes every statistic into one Pydantic bundle. Components:
 
@@ -125,7 +128,7 @@ Computes every statistic into one Pydantic bundle. Components:
 Input: index + predictions → Output: `results/analysis/study{N}/bundle.json` + `agreements.csv`.
 CLI: `analyze --study N`.
 
-### 4. `report` — analysis bundle → deterministic figures + tables
+### 4. Report generator (`report`) — ANALYSIS RESULTS → FIGURES + TABLES
 
 Regenerates all article artefacts from the bundle, identically every time. Components:
 
