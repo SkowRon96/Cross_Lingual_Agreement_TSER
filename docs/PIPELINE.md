@@ -45,17 +45,100 @@ flowchart LR
 Five CLI stages: **`ingest → predict → analyze → report`** (+ `import-predictions` for models run
 off-box, e.g. a GPU-only audio-LLM).
 
-## Components (by responsibility)
+## The four stages, in detail
 
-| area | modules | responsibility |
-|---|---|---|
-| **config** | `config/emotions.py`, `settings.py`, `studies.py` | canonical emotion enum + palette/order; paths/seed; the study design — which models ran on which (study, corpus), headline vs secondary/leaky flags, and each model's supported classes |
-| **labels** | `labels/mapping.py`, `mapper.py` | raw→canonical mapping (fail-loud), DROP set for non-Ekman; per-model native→canonical score aggregation |
-| **data** | `data/schema.py`, `ingest.py`, `index_io.py`, `audio.py`, `video.py`, `loaders/*` | `Sample`/`AudioRef` contract; gold resolution + harmonization report; corpus loaders (nEMO, CAMEO, RAVDESS, MELD); audio decode; face-frame extraction |
-| **models** | `models/registry.py`, `base.py`, `text/*`, `speech/*`, `face/*` | `EmotionModel` protocol (`predict_batch`, `config_signature`); a registry that builds any model by id; HF text, custom CNN-Transformer speech, speechbrain, Qwen zero-shot prompt/parser, ViT face, subprocess-isolated Keras LSTM |
-| **predict** | `predict/store.py`, `runner.py` | versioned parquet prediction cache (config-signature invalidation, resume); batch runner |
-| **analysis** | `analysis/agreement.py`, `bootstrap.py`, `metrics.py`, `tests.py`, `conflicts.py`, `correlation.py`, `lang_features.py`, `results.py`, `run.py` | common-support alignment + Cohen/Fleiss κ; bootstrap CIs; baselines; McNemar/two-proportion; conflict + confidence; typological features; Pydantic result schemas; orchestration |
-| **report** | `report/style.py`, `tables.py`, `figures.py`, `run.py` | shared style; table writers (4 formats); confusion / κ-CI / conflict / scatter figures |
+### 1. `ingest` — raw datasets → gold-resolved corpus index
+
+Reads one corpus, resolves every utterance's gold label into the canonical space, and writes an
+index plus a harmonization report. Components:
+
+- **Loaders** `data/loaders/{nemo,cameo,meld}.py`, `data/ravdess.py` — turn a raw corpus into a
+  `list[Sample]` (id, studies, corpus, language, text, `AudioRef`, optional `video_path`, `gold_raw`).
+- **Data contract** `data/schema.py` — `Sample` / `AudioRef` Pydantic models (exactly-one audio source).
+- **Label harmonization** `labels/mapping.py` — `map_label` (raw → canonical `Emotion` or `None`=DROP;
+  *fail-loud* on unknown), plus `MASTER_MAP` and the `DROP_LABELS` set (non-Ekman categories).
+- **Gold resolution + report** `data/ingest.py` — `resolve_gold` applies the mapping; `ingest_corpus`
+  emits an `IngestReport` (kept / dropped counts, raw→canonical map, per-dropped-label counts).
+- **Index I/O** `data/index_io.py` — `write_index` / `read_index` (`Sample` ↔ parquet round-trip).
+
+Input: `datasets/…` → Output: `results/index/study{N}/{corpus}.parquet` + `{corpus}.report.json`.
+CLI: `ingest --corpus nemo|ravdess|cameo|meld`.
+
+### 2. `predict` — models over the index (cached, versioned)
+
+Runs each model over a corpus and caches its predictions. Components:
+
+- **Model contract** `models/base.py` — the `EmotionModel` protocol (`model_id`, `modality`,
+  `predict_batch`, `config_signature`), the `Prediction` schema, and `to_prediction`.
+- **Registry** `models/registry.py` — `build_model(id)` constructs any of the 10 models by id; holds
+  per-model native label sets and label overrides.
+- **Model implementations** — text: `models/text/hf_text.py`, `text/lstm/*` (subprocess-isolated Keras);
+  speech: `models/speech/{features,architectures,cnn_transformer,speechbrain_iemocap}.py` +
+  `speech/zeroshot/prompt.py` (Qwen prompt + parser); face: `models/face/vit_face.py`.
+- **Label mapper** `labels/mapper.py` — `LabelMapper` maps a model's native scores → canonical space,
+  aggregates/renormalizes, and abstains when all probability mass falls on dropped classes.
+- **Prediction cache** `predict/store.py` — `PredictionStore`: versioned parquet store with
+  `config_signature` invalidation, resume, and a manifest.
+- **Runner** `predict/runner.py` — `run_prediction` (batching, resume only on matching config).
+- **Off-box import** `data/import_preds.py` — `import_predictions` ingests predictions computed
+  elsewhere (e.g. Qwen on a GPU box) from a `[sample_id, corpus, raw_response, pred]` parquet.
+
+Input: index + registry → Output: `results/predictions/study{N}/{corpus}/{model}.parquet`.
+CLI: `predict --study N --corpus X --model all|<id>`, `import-predictions`.
+
+### 3. `analyze` — predictions + gold → typed statistics
+
+Computes every statistic into one Pydantic bundle. Components:
+
+- **Orchestration** `analysis/run.py` — `analyze_study` loads gold + predictions, skips whatever is
+  missing (with a warning), and drives all of the below.
+- **Baselines** `analysis/metrics.py` — accuracy, macro-F1, confusion matrix per model.
+- **Agreement** `analysis/agreement.py` — common-support `aligned_pairs` (the §-exclusions), Cohen's κ
+  (`cohen_kappa`), Fleiss' κ (`fleiss_kappa`).
+- **Bootstrap CIs** `analysis/bootstrap.py` — 1000× percentile CI per κ + PL-vs-EN difference CI (seed 20260723).
+- **Significance tests** `analysis/tests.py` — McNemar (paired, within one corpus), two-proportion (unpaired).
+- **Conflicts** `analysis/conflicts.py` — which modality is closer to gold on disagreement, per-emotion.
+- **Confidence** `analysis/correlation.py` — Pearson / Spearman across modalities (skips zero-shot).
+- **Language features** `analysis/lang_features.py` — syntactic distance (URIEL/lang2vec) + resource tier.
+- **Result schemas** `analysis/results.py` — the `AnalysisBundle` Pydantic model + JSON / tidy-CSV writers.
+- **Study design** `config/studies.py` — roster per (study, corpus), headline pairs, `SUPPORTED` classes, `SPLIT_LANG`.
+
+Input: index + predictions → Output: `results/analysis/study{N}/bundle.json` + `agreements.csv`.
+CLI: `analyze --study N`.
+
+### 4. `report` — analysis bundle → deterministic figures + tables
+
+Regenerates all article artefacts from the bundle, identically every time. Components:
+
+- **Orchestration** `report/run.py` — `report_study` reads the bundle and writes every artefact.
+- **Style** `report/style.py` — colorblind palette + fixed class order, `apply()` rcParams,
+  `save_fig` (PDF+PNG), table→PNG helper.
+- **Tables** `report/tables.py` — `write_table` (CSV / Markdown / LaTeX / PNG) + builders (kappa,
+  baselines, study2, PL-vs-EN).
+- **Figures** `report/figures.py` — confusion matrices, κ-with-CI, conflict bars, Study-2 scatter.
+
+Input: analysis bundle → Output: `results/figures/study{N}/*.{pdf,png}` + `results/tables/study{N}/*.{csv,md,tex,png}`.
+CLI: `report --study N`.
+
+## Shared foundation (used by every stage)
+
+- **`config/emotions.py`** — the canonical `Emotion` enum, `CANONICAL_ORDER`, and the fixed
+  colorblind-safe per-emotion palette (`EMOTION_COLORS`).
+- **`config/settings.py`** — dataset/results paths, the RNG seed, and run configuration (Pydantic settings).
+- **`labels/`** — the single canonical-space mapping, applied both to gold (at `ingest`) and to model
+  outputs (at `predict`), so labels are comparable everywhere.
+
+## Components (quick reference)
+
+| area               | modules                                                                                                                                                           | responsibility                                                                                                                                                                                                                           |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **config**   | `config/emotions.py`, `settings.py`, `studies.py`                                                                                                           | canonical emotion enum + palette/order; paths/seed; the study design — which models ran on which (study, corpus), headline vs secondary/leaky flags, and each model's supported classes                                                 |
+| **labels**   | `labels/mapping.py`, `mapper.py`                                                                                                                              | raw→canonical mapping (fail-loud), DROP set for non-Ekman; per-model native→canonical score aggregation                                                                                                                                |
+| **data**     | `data/schema.py`, `ingest.py`, `index_io.py`, `audio.py`, `video.py`, `loaders/*`                                                                     | `Sample`/`AudioRef` contract; gold resolution + harmonization report; corpus loaders (nEMO, CAMEO, RAVDESS, MELD); audio decode; face-frame extraction                                                                               |
+| **models**   | `models/registry.py`, `base.py`, `text/*`, `speech/*`, `face/*`                                                                                         | `EmotionModel` protocol (`predict_batch`, `config_signature`); a registry that builds any model by id; HF text, custom CNN-Transformer speech, speechbrain, Qwen zero-shot prompt/parser, ViT face, subprocess-isolated Keras LSTM |
+| **predict**  | `predict/store.py`, `runner.py`                                                                                                                               | versioned parquet prediction cache (config-signature invalidation, resume); batch runner                                                                                                                                                 |
+| **analysis** | `analysis/agreement.py`, `bootstrap.py`, `metrics.py`, `tests.py`, `conflicts.py`, `correlation.py`, `lang_features.py`, `results.py`, `run.py` | common-support alignment + Cohen/Fleiss κ; bootstrap CIs; baselines; McNemar/two-proportion; conflict + confidence; typological features; Pydantic result schemas; orchestration                                                        |
+| **report**   | `report/style.py`, `tables.py`, `figures.py`, `run.py`                                                                                                    | shared style; table writers (4 formats); confusion / κ-CI / conflict / scatter figures                                                                                                                                                  |
 
 ## Install
 
@@ -122,4 +205,7 @@ any pair, and confusion/report handle it generically.
 - Confidence is model-dependent and skipped for zero-shot models (unreliable).
 - Correctness-critical maths (κ, exclusions, bootstrap, tests) are unit-tested; report rendering is
   smoke-tested.
+
+```
+
 ```
