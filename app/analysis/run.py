@@ -62,7 +62,8 @@ def _bootstrap_fleiss(rater_labels, *, n: int = 1000, seed: int = bootstrap.SEED
     return BootstrapCI(lo=float(lo), hi=float(hi))
 
 
-def _fleiss_ravdess(bundle: AnalysisBundle, present: dict, gold: dict, trio: list[str]) -> None:
+def _fleiss_ravdess(bundle: AnalysisBundle, present: dict, gold: dict, trio: list[str],
+                    corpus: str = "RAVDESS") -> None:
     maps = {m: {p.sample_id: p for p in present[m]} for m in trio}
     support = set(Emotion)
     for m in trio:
@@ -82,7 +83,7 @@ def _fleiss_ravdess(bundle: AnalysisBundle, present: dict, gold: dict, trio: lis
     k = fleiss_kappa(rater_labels)
     ci = _bootstrap_fleiss(rater_labels)
     bundle.fleiss.append(FleissResult(
-        corpus="RAVDESS", model_ids=trio, kappa=k,
+        corpus=corpus, model_ids=trio, kappa=k,
         n_used=n_used, n_excluded=n_excluded, ci=ci))
 
 
@@ -187,10 +188,11 @@ def analyze_study(study, *, results_root: Path, index_dir: Path) -> AnalysisBund
                     bundle.tests.append(mcnemar(
                         [ca[s] for s in shared], [cb[s] for s in shared],
                         corpus=corpus, detail=f"{ht} vs {hs} correctness"))
-        if corpus == "RAVDESS":
-            trio = ["en_text_hartmann", "speech_zeroshot", "en_face_vit"]
+        # trimodal Fleiss for any corpus with the clean text+speech+face trio present
+        if lang:
+            trio = [studies.HEADLINE[(lang, "text")], studies.HEADLINE[(lang, "speech")], "en_face_vit"]
             if all(m in present for m in trio):
-                _fleiss_ravdess(bundle, present, gold, trio)
+                _fleiss_ravdess(bundle, present, gold, trio, corpus)
     # PL vs EN headline κ difference (study 1, unpaired: independent resamples)
     if "PL" in headline_aligned and "EN" in headline_aligned:
         (pla, plb), (ela, elb) = headline_aligned["PL"], headline_aligned["EN"]
