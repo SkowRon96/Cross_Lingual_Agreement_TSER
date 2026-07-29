@@ -24,7 +24,6 @@ CORPORA = ["nEMO", "RAVDESS", "MELD"]
 
 
 def write(df, stem, caption):
-    df.to_csv(OUT / f"{stem}.csv", index=False)
     (OUT / f"{stem}.md").write_text(df.to_markdown(index=False))
     (OUT / f"{stem}.tex").write_text(df.to_latex(index=False, caption=caption, escape=True))
 
@@ -40,6 +39,14 @@ def _agr(corpus, a, b_):
 
 
 rows = []
+def _fleiss(corpus):
+    for f in b.fleiss:
+        if f.corpus == corpus:
+            ci = f"[{f.ci.lo:.2f}, {f.ci.hi:.2f}]" if f.ci else "—"
+            return f.kappa, ci, f.n_used
+    return None
+
+
 for c in CORPORA:
     for a, bb, lab in [(TEXT[c], SPEECH, "text–speech"), (TEXT[c], FACE, "text–face"),
                        (SPEECH, FACE, "speech–face")]:
@@ -47,10 +54,18 @@ for c in CORPORA:
         if r is None:
             continue
         k, ci, n = r
-        rows.append({"corpus": c, "pair": lab, "κ": f"{k:.3f}", "95% CI": ci, "n": n})
+        rows.append({"corpus": c, "coef": "Cohen", "modalities": lab,
+                     "κ": f"{k:.3f}", "95% CI": ci, "n": n})
+    # trimodal Fleiss (text–speech–face), where the clean trio exists (RAVDESS, MELD)
+    fr = _fleiss(c)
+    if fr is not None:
+        fk, fci, fn = fr
+        rows.append({"corpus": c, "coef": "Fleiss", "modalities": "text–speech–face",
+                     "κ": f"{fk:.3f}", "95% CI": fci, "n": fn})
 k_df = pd.DataFrame(rows)
 write(k_df, "cross_modal_kappa",
-      "Cross-modal agreement (Cohen's κ) on clean/headline models, Study 1.")
+      "Cross-modal agreement (Cohen's κ for pairs, Fleiss' κ for the trimodal triad) "
+      "on clean/headline models, Study 1.")
 
 # ---- Table 2: per-modality baselines (clean models) ----
 bl = {(x.corpus, x.model_id): x for x in b.baselines}
@@ -68,4 +83,4 @@ write(bdf, "modality_baselines",
 
 print("=== cross_modal_kappa ===\n" + k_df.to_markdown(index=False))
 print("\n=== modality_baselines ===\n" + bdf.to_markdown(index=False))
-print(f"\n-> {OUT}/*.{{tex,md,csv}}")
+print(f"\n-> {OUT}/*.{{tex,md}}")

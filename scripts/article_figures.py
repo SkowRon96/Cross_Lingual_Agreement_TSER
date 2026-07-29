@@ -60,54 +60,67 @@ def d1():
     style.save_fig(fig, OUT / "d1_headline_kappa")
 
 
-# ---------- D2: Qwen accuracy spread + negative collapse (honest: NOT a clean EN/non-EN split) ----------
+# ---------- D2: Qwen accuracy spread (a) + negative collapse (b), vivid palette ----------
 _LANG_COLOR = {"en": "#0072B2", "pl": "#D55E00", "de": "#009E73", "fr": "#CC79A7",
                "it": "#E69F00", "es": "#56B4E9", "ru": "#F0E442", "bn": "#999999"}
+POP_C, NICHE_C = "#0072B2", "#E69F00"  # figure (b) groups — same blue/amber as conflict_direction
 
 
-def d2():
-    corpora = [(1, "RAVDESS", "en"), (1, "MELD", "en"), (1, "nEMO", "pl")]
+def _zeroshot_data():
+    """(accuracy, corpus, iso, Counter of predictions) for every CAMEO split, sorted by acc."""
+    data = []
     for split in studies.STUDY2_SPLITS:
-        corpora.append((2, split, studies.SPLIT_LANG[split]))
-    data = []  # (acc, label, iso, Counter preds)
-    for study, corpus, iso in corpora:
-        if not store.path(study, corpus, "speech_zeroshot").exists():
+        if not store.path(2, split, "speech_zeroshot").exists():
             continue
-        gold = gold_lookup(study, corpus, s.index_dir)
-        preds = _preds(study, corpus, "speech_zeroshot")
-        b = baseline(preds, gold, "speech_zeroshot", corpus, "speech")
+        gold = gold_lookup(2, split, s.index_dir)
+        preds = _preds(2, split, "speech_zeroshot")
+        b = baseline(preds, gold, "speech_zeroshot", split, "speech")
         c = Counter(p.pred.value for p in preds if p.pred)
-        tag = "S1" if study == 1 else "S2·CAMEO"
-        data.append((b.accuracy, f"{corpus} ({iso}, {tag})", iso, c))
+        data.append((b.accuracy, split, studies.SPLIT_LANG[split], c))
     data.sort(key=lambda t: t[0], reverse=True)
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+    return data
+
+
+def d2a():
+    """Accuracy spread across CAMEO corpora, bars coloured by language (no title)."""
+    data = _zeroshot_data()
+    fig, ax = plt.subplots(figsize=(7, 5))
     y = np.arange(len(data))
-    ax1.barh(y, [d[0] for d in data], color=[_LANG_COLOR[d[2]] for d in data], edgecolor="black")
-    ax1.set_yticks(y, [d[1] for d in data], fontsize=8); ax1.invert_yaxis()
-    ax1.set_xlabel("Qwen2-Audio zero-shot accuracy")
-    ax1.set_title("Highly uneven across corpora (0.24–0.85) — not a clean language split\n"
-                  "(German pavoque high; English emns/jl_corpus low)")
-    ax1.axvline(1/7, color="k", ls=":", lw=0.8, label="chance (1/7)")
+    ax.barh(y, [d[0] for d in data], color=[_LANG_COLOR[d[2]] for d in data])
+    ax.set_yticks(y, [f"{d[1]} ({d[2]})" for d in data], fontsize=9); ax.invert_yaxis()
+    ax.set_xlabel("Qwen2-Audio zero-shot accuracy")
     from matplotlib.patches import Patch
-    ax1.legend(handles=[Patch(color=v, label=k) for k, v in _LANG_COLOR.items()],
-               fontsize=7, ncol=2, title="language")
-    # per-emotion prediction share: EASY corpora (acc>=0.6) vs HARD (acc<0.4)
-    easy, hard = Counter(), Counter()
+    langs = [d[2] for d in data]
+    handles = [Patch(color=_LANG_COLOR[l], label=l) for l in _LANG_COLOR if l in langs]
+    ax.legend(handles=handles, fontsize=9, ncol=2, title="language", loc="lower right")
+    ax.grid(True, axis="x", alpha=0.3)
+    style.save_fig(fig, OUT / "d2_qwen_accuracy")
+
+
+def d2b():
+    """Per-emotion prediction share: popular (acc>=0.6) vs niche (acc<0.4) corpora."""
+    data = _zeroshot_data()
+    pop, niche = Counter(), Counter()
     for acc, _, _, c in data:
-        (easy if acc >= 0.6 else hard if acc < 0.4 else Counter()).update(c)
+        (pop if acc >= 0.6 else niche if acc < 0.4 else Counter()).update(c)
     def share(c):
         t = sum(c.values()) or 1
         return [c.get(e, 0) / t for e in ORDER]
+    fig, ax = plt.subplots(figsize=(7, 4.5))
     w = 0.4; xe = np.arange(len(ORDER))
-    ax2.bar(xe - w/2, share(easy), w, label="easy corpora (acc≥0.6)", color="#009E73", edgecolor="black")
-    ax2.bar(xe + w/2, share(hard), w, label="hard corpora (acc<0.4)", color="#D55E00", edgecolor="black")
-    ax2.set_xticks(xe, ORDER, rotation=45, ha="right")
-    ax2.set_ylabel("share of Qwen predictions")
-    ax2.set_title("On hard corpora Qwen collapses to fear/sadness/anger")
-    ax2.legend(fontsize=8)
-    style.save_fig(fig, OUT / "d2_qwen_accuracy_collapse")
-    print(f"D2 easy-corpora pred share: {dict(zip(ORDER,[round(x,2) for x in share(easy)]))}")
-    print(f"D2 hard-corpora pred share: {dict(zip(ORDER,[round(x,2) for x in share(hard)]))}")
+    ax.bar(xe - w/2, share(pop), w, label="popular datasets (acc≥0.6)", color=POP_C)
+    ax.bar(xe + w/2, share(niche), w, label="niche datasets (acc<0.4)", color=NICHE_C)
+    ax.set_xticks(xe, ORDER, rotation=45, ha="right")
+    ax.set_ylabel("share of Qwen predictions")
+    ax.legend(fontsize=9)
+    ax.grid(True, axis="y", alpha=0.3)
+    style.save_fig(fig, OUT / "d2_qwen_collapse")
+    print(f"D2 popular pred share: {dict(zip(ORDER,[round(x,2) for x in share(pop)]))}")
+    print(f"D2 niche pred share: {dict(zip(ORDER,[round(x,2) for x in share(niche)]))}")
+
+
+def d2():
+    d2a(); d2b()
 
 
 # ---------- D3: acted-vs-natural text confusion ----------
@@ -142,7 +155,6 @@ def d3():
                         ax.text(j, i, f"{m[i,j]:.2f}", ha="center", va="center",
                                 color="white" if m[i, j] > 0.5 else "black", fontsize=7)
             fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="recall")
-        fig.savefig((OUT / "d3_text_cm_contrast").with_suffix(".pdf"))
         fig.savefig((OUT / "d3_text_cm_contrast").with_suffix(".png"), dpi=300)
         plt.close(fig)
 
@@ -150,7 +162,7 @@ def d3():
 import sys
 _only = sys.argv[1] if len(sys.argv) > 1 else None
 if _only == "d1": d1()
-elif _only == "d2": d2()
+elif _only in ("d2", "d2a", "d2b"): {"d2": d2, "d2a": d2a, "d2b": d2b}[_only]()
 elif _only == "d3": d3()
 else: d1(); d2(); d3()
-print(f"\n-> {OUT}/*.{{pdf,png}}")
+print(f"\n-> {OUT}/*.png")
