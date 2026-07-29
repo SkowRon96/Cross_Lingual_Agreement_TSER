@@ -95,6 +95,23 @@ Całość dzieli się na dwa badania, które **nie zależą od siebie nawzajem**
 - H2: W RAVDESS silniejsza zgodność mowa–twarz niż tekst–mowa (oba kanały niewerbalne).
 - Konkretna, policzalna charakterystyka przypadków konfliktu — materiał bezpośrednio zasilający projekt modułu decyzyjnego robota społecznego.
 
+### Rozszerzenie (opcjonalne, jeśli starczy czasu): MELD jako kontrast wobec RAVDESS
+
+**Powód dołożenia:** RAVDESS jest zbiorem aktorskim z celowo zneutralizowaną leksykalnie treścią (te same 2 zdania powtarzane dla każdej emocji) — sygnał emocjonalny niesie tam wyłącznie głos/twarz, nie słowa. MELD (dialogi z serialu Friends, ponad 13 000 wypowiedzi) ma naturalnie zróżnicowaną treść, która sama w sobie niesie sygnał emocjonalny — i jest tak samo trójmodalny (tekst+mowa+twarz), z niemal identyczną taksonomią 7 klas (anger, disgust, sadness, joy, neutral, surprise, fear).
+
+| | RAVDESS | MELD |
+|---|---|---|
+| Charakter mowy | aktorska, kontrolowana | naturalny dialog |
+| Tekst | fonetycznie neutralny (2 stałe zdania) | naturalnie zróżnicowany, faktycznie emocjonalny |
+| Modalności | tekst+mowa+twarz | tekst+mowa+twarz |
+
+**Nowa hipoteza:**
+- H2b: Zgodność tekst–mowa będzie wyższa w MELD niż w RAVDESS, ponieważ w MELD treść słów faktycznie niesie sygnał emocjonalny, podczas gdy w RAVDESS jest celowo zneutralizowana. Potwierdzenie tej hipotezy pokazałoby, że niska zgodność międzymodalna w klasycznych korpusach aktorskich jest częściowo artefaktem metodologii tych korpusów, nie uniwersalną cechą relacji tekst–mowa.
+
+**Ograniczenie do odnotowania:** nagrania MELD zawierają tło muzyczne i śmiech publiczności (typowe dla materiału telewizyjnego) — może obniżać jakość rozpoznawania z audio, niezależnie od języka/zgodności modalności.
+
+**Reużycie pipeline'u:** te same modele tekstowe i model twarzy co dla RAVDESS; model mowy (`speechbrain/emotion-recognition-wav2vec2-IEMOCAP`) może nawet lepiej pasować domenowo, bo IEMOCAP to też naturalny dialog.
+
 ---
 
 ## Badanie 2 — warstwa szeroka (8 języków)
@@ -139,11 +156,24 @@ Wszystkie splity CAMEO mają jednolity schemat (audio, transkrypcja, etykieta em
 - Model zero-shot (audio-LLM) może mieć niższy pułap skuteczności niż dedykowane klasyfikatory — ograniczenie znane i akceptowalne (spójne z niskim baseline'em w PolEval Task 4).
 - Wyniki bazują na mowie aktorskiej/wyreżyserowanej (RAVDESS, nEMO), nie spontanicznej — ograniczenie ekologicznej trafności.
 
+## Wkład narzędziowy: pipeline jako produkt uboczny badania
+
+**Robocza nazwa: `ModAgree`** (Modality Agreement) — do zmiany, jeśli przyjdzie coś lepszego.
+
+**Dlaczego to ma sens jako osobny wkład:** sprawdziłem literaturę — istniejące narzędzia (ERTK, SSI, MixedEmotions, Emolysis, MindLink-Eumpy) skupiają się na **fuzji** multimodalnej (łączeniu sygnałów, żeby poprawić accuracy) albo na infrastrukturze ekstrakcji cech. Jedno bardzo świeże narzędzie (2026, LLM-Assisted Toolkit for Inspectable Multimodal Emotion Data Annotation) dotyka "cross-modal consistency checks", ale jako pomoc dla anotatorów przy tworzeniu etykiet, nie jako narzędzie do analizy zgodności predykcji modeli. **Nie znalazłem gotowego, ogólnego narzędzia, które bierze dowolny multimodalny zbiór + dowolny zestaw klasyfikatorów per modalność i zwraca ustandaryzowany raport zgodności.** To realna luka narzędziowa, nie tylko badawcza.
+
+**Co miałby robić `ModAgree`:**
+- Wejście: multimodalny zbiór (audio/tekst/obraz + etykieta) + lista modeli per modalność (np. ID z Hugging Face) podana w prostym pliku konfiguracyjnym
+- Wyjście: automatycznie liczone — baseline accuracy/F1, Cohen's/Fleiss' kappa między modalnościami, tabela przypadków konfliktu, korelacja confidence score
+- Architektura: modularna, konfiguracja deklaratywna (inspiracja: podejście ERTK), łatwa do rozszerzenia o nowy zbiór/model bez zmiany rdzenia narzędzia
+
+**Publikacja:** otwarte repozytorium (np. GitHub) z README i licencją, zlinkowane w sekcji Wniosków artykułu jako artefakt badawczy — standardowa, dobrze widziana praktyka, zwiększająca cytowalność i użyteczność pracy dla przyszłych badaczy (w tym dla kolejnych rozdziałów doktoratu, np. przy integracji z modułem decyzyjnym robota z roku V).
+
 ## Struktura artykułu (szkic sekcji)
 
 1. Wstęp — motywacja z perspektywy robotyki społecznej, luka badawcza
 2. Related Work — cross-modal inconsistency (InconVAD), cross-lingual SER (MDAT i inne), zasoby dla polskiego (PolEval Task 4, CAMEO)
 3. Metodologia — osobno dla Badania 1 i Badania 2 (zbiory, modele, pipeline, metryki)
-4. Wyniki — Sekcja 4.1: Badanie 1 (PL/EN, w tym trójmodalność); Sekcja 4.2: Badanie 2 (8 języków)
+4. Wyniki — Sekcja 4.1: Badanie 1 (PL/EN, w tym trójmodalność, opcjonalnie RAVDESS vs MELD); Sekcja 4.2: Badanie 2 (8 języków)
 5. Dyskusja — implikacje dla modułu decyzyjnego robota społecznego, diagnoza zasoby vs struktura
-6. Wnioski i kierunki dalsze — jawne wskazanie luki (brak polskiego zbioru trójmodalnego) jako mostu do kolejnego etapu doktoratu
+6. Wnioski i kierunki dalsze — jawne wskazanie luki (brak polskiego zbioru trójmodalnego) jako mostu do kolejnego etapu doktoratu; udostępnienie `ModAgree` jako artefaktu badawczego
