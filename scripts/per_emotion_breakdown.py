@@ -1,11 +1,10 @@
 """Per-emotion correct/incorrect breakdown for every (study, corpus, model).
 
 For each gold emotion: n_gold, correct (pred==gold), incorrect (pred!=gold, incl. abstain),
-and pct_correct (recall = correct / n_gold). Writes one tidy master CSV plus a readable
-markdown table per (study, corpus, model). Reads only cached predictions + the ingested
-index gold — recompute any time with:  .venv/bin/python scripts/per_emotion_breakdown.py
+and pct_correct (recall = correct / n_gold). Writes one tidy master Markdown table plus a
+readable markdown table per (study, corpus, model). Reads only cached predictions + the
+ingested index gold — recompute any time with:  .venv/bin/python scripts/per_emotion_breakdown.py
 """
-import csv
 from pathlib import Path
 
 from app.analysis.metrics import baseline
@@ -43,9 +42,10 @@ def main():
     store = PredictionStore(s.results_root / "predictions")
     out_dir = s.results_root / "tables" / "per_emotion"
     out_dir.mkdir(parents=True, exist_ok=True)
-    master = s.results_root / "tables" / "per_emotion_breakdown.csv"
+    master = s.results_root / "tables" / "per_emotion_breakdown.md"
 
-    tidy = [("study", "corpus", "model", "emotion", "n_gold", "correct", "incorrect", "pct_correct")]
+    cols = ("study", "corpus", "model", "emotion", "n_gold", "correct", "incorrect", "pct_correct")
+    tidy = [cols]
     n_tables = 0
     for (study, corpus), model_ids in sorted(studies.ROSTER.items()):
         try:
@@ -69,10 +69,14 @@ def main():
             (out_dir / f"study{study}_{corpus}_{mid}.md").write_text("\n".join(md) + "\n")
             n_tables += 1
 
-    with master.open("w", newline="") as f:
-        csv.writer(f).writerows(tidy)
+    header, body = tidy[0], tidy[1:]
+    lines = ["# Per-emotion breakdown (all studies/corpora/models)", "",
+             "| " + " | ".join(header) + " |",
+             "|" + "|".join(["---"] * len(header)) + "|"]
+    lines += ["| " + " | ".join(str(v) for v in row) + " |" for row in body]
+    master.write_text("\n".join(lines) + "\n")
     print(f"wrote {n_tables} per-model tables -> {out_dir}")
-    print(f"master tidy CSV -> {master} ({len(tidy) - 1} rows)")
+    print(f"master tidy Markdown -> {master} ({len(body)} rows)")
 
 
 if __name__ == "__main__":

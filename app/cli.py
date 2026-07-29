@@ -84,14 +84,14 @@ def _ingest(args) -> int:
 
 def _analyze(args) -> int:
     from app.analysis.run import analyze_study
-    from app.analysis.results import write_json, write_tidy_csv
+    from app.analysis.results import write_json, write_tidy_md
     settings = Settings()
     results_root = Path(args.results_root) if args.results_root else settings.results_root
     index_dir = Path(args.index_dir) if args.index_dir else settings.index_dir
     bundle = analyze_study(args.study, results_root=results_root, index_dir=index_dir)
     out = results_root / "analysis" / f"study{args.study}"
     write_json(bundle, out / "bundle.json")
-    write_tidy_csv(bundle, out / "agreements.csv")
+    write_tidy_md(bundle, out / "agreements.md")
     print(f"analyze study {args.study}: {len(bundle.agreements)} agreements, "
           f"{len(bundle.baselines)} baselines -> {out}")
     return 0

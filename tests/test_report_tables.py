@@ -18,12 +18,13 @@ def test_kappa_table_has_ci_and_flags():
     assert df.iloc[0]["headline"] in (True, "True", 1)
 
 
-def test_write_table_emits_four_formats(tmp_path):
+def test_write_table_emits_md_tex_png(tmp_path):
     df = tables.kappa_table(_bundle())
     stem = tmp_path / "kappa"
     tables.write_table(df, stem)
-    for ext in ("csv", "md", "tex", "png"):
+    for ext in ("md", "tex", "png"):
         assert (tmp_path / f"kappa.{ext}").exists()
+    assert not (tmp_path / "kappa.csv").exists()
 
 
 def test_report_study_writes_artifacts(tmp_path):
@@ -33,4 +34,4 @@ def test_report_study_writes_artifacts(tmp_path):
     write_json(b, tmp_path / "analysis" / "study1" / "bundle.json")
     paths = report_study(1, results_root=tmp_path)
     assert any(p.suffix == ".png" for p in paths)
-    assert (tmp_path / "tables" / "study1" / "kappa.csv").exists()
+    assert (tmp_path / "tables" / "study1" / "kappa.md").exists()

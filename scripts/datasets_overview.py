@@ -1,12 +1,11 @@
 """Compile a dataset-overview table from the ingested indices + harmonization reports.
 
-Emits results/tables/datasets_overview.{md,csv} and a per-split CAMEO breakdown. Numbers
+Emits results/tables/datasets_overview.md (with a per-split CAMEO breakdown section). Numbers
 come from results/index/*/*.report.json (authoritative kept/dropped + native label sets),
 languages/modalities from app.config.studies, descriptions hand-curated below.
 
   PYTHONPATH=. .venv/bin/python scripts/datasets_overview.py
 """
-import csv
 import json
 from pathlib import Path
 
@@ -90,13 +89,8 @@ out = s.results_root / "tables"
 out.mkdir(parents=True, exist_ok=True)
 cols = ["dataset", "study", "language", "modalities", "native_emotions",
         "canonical_emotions", "dropped", "n_kept", "n_total", "notes"]
-with (out / "datasets_overview.csv").open("w", newline="") as f:
-    w = csv.DictWriter(f, fieldnames=cols); w.writeheader(); w.writerows(rows)
-with (out / "cameo_splits.csv").open("w", newline="") as f:
-    w = csv.DictWriter(f, fieldnames=["split", "language", "n_kept", "n_total", "native_emotions", "dropped"])
-    w.writeheader(); w.writerows(cameo_rows)
 
-# markdown (printed + saved)
+# markdown (printed + saved); CAMEO splits are included as a section below
 def md_table(rows_, cols_):
     lines = ["| " + " | ".join(cols_) + " |", "|" + "|".join(["---"] * len(cols_)) + "|"]
     for r in rows_:
@@ -108,4 +102,4 @@ md = "# Datasets overview\n\n" + md_table(rows, cols) + "\n\n## CAMEO splits (St
      "\n\n\\* MELD face deferred (multi-speaker frames).\n"
 (out / "datasets_overview.md").write_text(md)
 print(md)
-print(f"\n-> {out}/datasets_overview.{{md,csv}} + cameo_splits.csv")
+print(f"\n-> {out}/datasets_overview.md")

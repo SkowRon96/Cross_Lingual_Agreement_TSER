@@ -1,4 +1,4 @@
-"""Table builders + 4-format writers (CSV, Markdown, LaTeX, PNG)."""
+"""Table builders + writers (Markdown, LaTeX, PNG)."""
 from pathlib import Path
 
 import pandas as pd
@@ -10,7 +10,6 @@ from app.report import style
 def write_table(df: pd.DataFrame, stem) -> None:
     stem = Path(stem)
     stem.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(stem.with_suffix(".csv"), index=False)
     stem.with_suffix(".md").write_text(df.to_markdown(index=False))
     stem.with_suffix(".tex").write_text(df.to_latex(index=False))
     style.table_to_png(df, stem.with_suffix(".png"))

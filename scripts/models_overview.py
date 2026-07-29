@@ -8,7 +8,6 @@ where each number comes from. Custom-model 'author' = the original project (this
 
   PYTHONPATH=. .venv/bin/python scripts/models_overview.py
 """
-import csv
 from pathlib import Path
 
 from app.config.settings import Settings
@@ -53,8 +52,6 @@ COLS = ["model_id", "source", "modality", "language", "native_emotions",
 rows = [dict(zip(COLS, r)) for r in ROWS]
 out = Settings().results_root / "tables"
 out.mkdir(parents=True, exist_ok=True)
-with (out / "models_overview.csv").open("w", newline="") as f:
-    w = csv.DictWriter(f, fieldnames=COLS); w.writeheader(); w.writerows(rows)
 
 lines = ["# Models overview (author-claimed accuracy)", "",
          "> Accuracy = what each model's author reports on THEIR OWN test set — NOT comparable "
@@ -65,4 +62,4 @@ for r in rows:
 md = "\n".join(lines) + "\n"
 (out / "models_overview.md").write_text(md)
 print(md)
-print(f"-> {out}/models_overview.{{md,csv}}")
+print(f"-> {out}/models_overview.md")

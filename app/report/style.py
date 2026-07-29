@@ -8,6 +8,17 @@ from app.config.emotions import CANONICAL_ORDER, EMOTION_COLORS
 PALETTE = EMOTION_COLORS
 ORDER = CANONICAL_ORDER
 
+# Muted, low-saturation palette matching the architecture diagram (classDef fills).
+# Pale fills paired with a single soft edge/label colour for a uniform, subdued look.
+MUTED = {
+    "teal": "#DDEEE7",
+    "green": "#E6F2E3",
+    "tan": "#F4E8D5",
+    "lavender": "#E7E2F3",
+}
+MUTED_EDGE = "#7a7a7a"    # soft grey outline for pastel bars
+MUTED_INK = "#3a3a3a"     # dark grey for value labels / axis text
+
 
 def apply() -> None:
     plt.rcParams.update({
@@ -21,7 +32,6 @@ def save_fig(fig, path_stem) -> None:
     from pathlib import Path
     stem = Path(path_stem)
     stem.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(stem.with_suffix(".pdf"))
     fig.savefig(stem.with_suffix(".png"), dpi=300)
     plt.close(fig)
 

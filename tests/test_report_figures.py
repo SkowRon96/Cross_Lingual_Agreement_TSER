@@ -2,13 +2,13 @@ from app.analysis.results import Baseline, AnalysisBundle, AgreementResult, Boot
 from app.report import figures, style
 
 
-def test_confusion_fig_saves_pdf_and_png(tmp_path):
+def test_confusion_fig_saves_png(tmp_path):
     b = Baseline(model_id="m", corpus="nEMO", modality="text", n=3, accuracy=0.6,
                  macro_f1=0.5, confusion={"anger": {"anger": 2, "sadness": 1}},
                  labels=["anger", "sadness"])
     fig = figures.confusion_fig(b)
     style.save_fig(fig, tmp_path / "cm")
-    assert (tmp_path / "cm.pdf").exists() and (tmp_path / "cm.png").exists()
+    assert (tmp_path / "cm.png").exists() and not (tmp_path / "cm.pdf").exists()
 
 
 def test_kappa_ci_and_conflict_and_scatter(tmp_path):

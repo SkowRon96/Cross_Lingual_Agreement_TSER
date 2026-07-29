@@ -1,6 +1,5 @@
-"""Pydantic result schemas + deterministic JSON / tidy-CSV serialization."""
+"""Pydantic result schemas + deterministic JSON / tidy-Markdown serialization."""
 from __future__ import annotations
-import csv
 import json
 from pathlib import Path
 
@@ -106,15 +105,16 @@ def read_json(path: Path) -> AnalysisBundle:
     return AnalysisBundle.model_validate_json(Path(path).read_text())
 
 
-def write_tidy_csv(bundle: AnalysisBundle, path: Path) -> None:
-    """One long tidy table of κ rows (agreements) for quick spreadsheet inspection."""
+def write_tidy_md(bundle: AnalysisBundle, path: Path) -> None:
+    """One long tidy Markdown table of κ rows (agreements) for quick inspection."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["study", "corpus", "model_a", "model_b", "kappa",
-                    "ci_lo", "ci_hi", "n_used", "n_excluded", "headline", "secondary"])
-        for a in bundle.agreements:
-            w.writerow([bundle.study, a.corpus, a.model_a, a.model_b, a.kappa,
-                        a.ci.lo if a.ci else "", a.ci.hi if a.ci else "",
-                        a.n_used, a.n_excluded, a.headline, a.secondary_flag])
+    cols = ["study", "corpus", "model_a", "model_b", "kappa",
+            "ci_lo", "ci_hi", "n_used", "n_excluded", "headline", "secondary"]
+    lines = ["| " + " | ".join(cols) + " |", "|" + "|".join(["---"] * len(cols)) + "|"]
+    for a in bundle.agreements:
+        lines.append("| " + " | ".join(str(v) for v in [
+            bundle.study, a.corpus, a.model_a, a.model_b, a.kappa,
+            a.ci.lo if a.ci else "", a.ci.hi if a.ci else "",
+            a.n_used, a.n_excluded, a.headline, a.secondary_flag]) + " |")
+    path.write_text("\n".join(lines) + "\n")
