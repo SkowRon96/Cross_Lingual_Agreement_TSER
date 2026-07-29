@@ -62,3 +62,5 @@ scripts/qwen_windows/*.parquet
 # Regenerable report artefacts (produced by scripts from cached predictions)
 results/figures/
 results/tables/
+
+__article_results/
