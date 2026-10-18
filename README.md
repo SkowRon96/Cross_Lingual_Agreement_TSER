@@ -1,135 +1,114 @@
 # Cross-Lingual Agreement Between Text and Speech Emotion Recognition
 
-**Towards Robust Multimodal Perception in Social Robots**
+This repository presents a general pipeline for measuring cross-modal consistency in emotion recognition. It evaluates how much emotion recognition models agree across text, speech, and facial expressions, as well as across different languages. The experiments use ten models and four corpora covering eight languages. The results are used to compare decision strategies, including late fusion and withholding the decision when the modalities provide conflicting information.
 
-A reproducible research pipeline for measuring **how far emotion-recognition models agree
-with each other across modalities and across languages**, and what a social robot should do
-when they disagree. The goal is not to ship a product but to quantify *when and how*
-modalities diverge, and to turn that measurement into a decision rule. The code backs a
-doctoral dissertation chapter and an accompanying article.
+The experiments are implemented as a common pipeline that supports different datasets and models. It harmonizes emotion labels to six basic emotions defined by Paul Ekman and a neutral class, while allowing other classes to be mapped or excluded. The main stages are:
 
-> This is a research project. Every reported number comes from the cached predictions in
-> `results/`; nothing is estimated, rounded up, or filled in by hand.
+1. **Ingest** — datasets are loaded and their emotion labels are mapped to a common set of categories. A harmonization report records the applied mappings and excluded labels.
+2. **Predict** — configured models are applied to the datasets and their predictions are stored for further analysis. Predictions are cached to avoid repeated model runs when the configuration has not changed.
+3. **Analyze** — cross-modal consistency is measured using Cohen's and Fleiss' κ, together with statistical tests, confidence and conflict analysis, and different decision strategies.
+4. **Report** — the results are automatically presented as tables, figures, and reports using the same settings for each analysis.
 
-Three studies share one pipeline:
+Adding a new dataset requires only mapping its emotion labels to the common categories. Adding a new model requires adding its configuration and output label mapping. The remaining stages are shared across all configurations, which keeps the analysis consistent between models, datasets, and languages.
 
-1. **Cross-modal agreement** — Cohen's/Fleiss' κ between the text, speech and face channels
-   on **nEMO** (Polish, acted), **RAVDESS** (English, acted, tri-modal) and **MELD**
-   (English, natural dialogue), with bootstrap confidence intervals and conflict analysis.
-2. **Cross-lingual agreement** — the same measurement across eight languages on **CAMEO**,
-   asking whether text↔speech agreement tracks language or data provenance.
-3. **Decision strategies** — late-fusion arbitration variants against the best single
-   channel, plus **selective prediction**: abstaining when the channels conflict, scored on a
-   risk–coverage curve.
+## Architecture
 
-A full description of the stages, their inputs and outputs is in
-[`docs/PIPELINE.md`](docs/PIPELINE.md).
+![Pipeline architecture](assets/pipeline_architecture.png)
+
+The four processors are the four CLI stages; the cylinders are the directories under `results/`.
 
 ## Modules
 
-| Path | Responsibility |
-| --- | --- |
-| [`app/cli.py`](app/cli.py) | The whole pipeline as four cached stages: `ingest`, `predict`, `analyze`, `report`, plus `import-predictions` for models run off-box. |
-| [`app/config/`](app/config/) | Settings and paths, the canonical emotion set (Ekman-6 + neutral), and the static study design: which model ran where, headline vs. secondary, and which classes each model can emit. |
-| [`app/labels/`](app/labels/) | Label harmonization. Every corpus- and model-specific label is mapped onto the canonical set; anything unmappable is dropped explicitly and counted, never guessed. |
-| [`app/data/`](app/data/) | Corpus loaders (nEMO, CAMEO, RAVDESS, MELD), audio/video access, and the corpus index with its harmonization report. |
-| [`app/models/`](app/models/) | One `EmotionModel` protocol over ten models in three modalities: Hugging Face text classifiers, a CNN-Transformer speech model, SpeechBrain, a ViT face model, a subprocess-isolated Keras LSTM, and the zero-shot audio-LLM imported from outside. |
-| [`app/predict/`](app/predict/) | `PredictionStore` — a versioned parquet cache keyed by a model config signature, holding the **full harmonized probability vector** per sample, so analyses can be redone without re-running inference. |
-| [`app/analysis/`](app/analysis/) | The statistics: common-support alignment, Cohen's and Fleiss' κ, percentile bootstrap CIs, McNemar and two-proportion tests, conflict and confidence analysis, and the Study-3 arbitration and selective-prediction logic. All results are Pydantic-typed. |
-| [`app/report/`](app/report/) | The dissertation's visual system (palette, typography, number conventions) and the figure/table writers that render Markdown, LaTeX and PNG. |
-| [`scripts/`](scripts/) | One-off tooling around the pipeline: the publication figures and tables, dataset/model overviews, MELD audio extraction, and the standalone Qwen2-Audio runner for a separate GPU machine. |
-| [`tests/`](tests/) | Unit tests for the correctness-critical maths and label mapping; integration tests that touch real data or download models are marked `slow`. |
-| [`weights/`](weights/) | Trained weights of the models developed for this work (CNN-Transformer speech, Keras LSTM Polish text). Versioned, ~25 MB. |
-| [`results/`](results/) | Output directory. Not versioned — everything in it is regenerable from the code. |
+The modules are listed in the order of the stages above.
+
+| Stage   | Module                     | Purpose                                                                                                                                            |
+| ------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| shared  | `app/config/`            | Paths, random seed, the common emotion set, and the study design: which models were run on which corpus, and which emotions each model can return. |
+| shared  | `app/labels/`            | Label mapping. Translates both dataset labels and model outputs into the common set, and marks a prediction as abstained when it falls outside it. |
+| Ingest  | `app/data/`              | Dataset loaders, audio and video reading, and the index with its harmonization report.                                                             |
+| Predict | `app/models/`            | One shared interface for all ten models, and a registry that builds any of them by name.                                                           |
+| Predict | `app/predict/`           | The prediction cache and the batch runner. Cached predictions are reused until a model's configuration changes.                                    |
+| Analyze | `app/analysis/`          | Accuracy and F1, Cohen's and Fleiss' κ, confidence intervals, significance tests, conflict analysis, and the decision strategies.                 |
+| Report  | `app/report/`            | The shared figure style, colour palette and number formats, and the writers that produce tables and figures.                                       |
+| all     | `app/cli.py`             | The five commands: `ingest`, `predict`, `analyze`, `report`, `import-predictions`.                                                       |
+| —      | `scripts/`               | Figures and tables for the article, dataset and model overviews, MELD audio extraction, and the Qwen2-Audio runner for a separate GPU machine.     |
+| —      | `tests/`                 | Tests. Those that need the datasets or download a model are marked `slow`.                                                                       |
+| —      | `weights/`, `results/` | Where the author's own model weights are placed, and the output directory. Neither is versioned.                                                   |
+
+A new dataset needs only a loader and a mapping of its labels. A new model needs its configuration and a mapping of its output labels. A model that cannot be run here only has to save its predictions to a parquet file, which `import-predictions` reads; `scripts/qwen_windows/` is a complete example. Everything else is shared.
+
+## Models
+
+### Public models
+
+Downloaded from Hugging Face on first use into `models/hf_cache` (not versioned).
+
+| Modality | Language | Model                                                                                                                        | Role          |
+| -------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| Text     | EN       | [j-hartmann/emotion-english-distilroberta-base](https://huggingface.co/j-hartmann/emotion-english-distilroberta-base)         | headline      |
+| Text     | multi    | [tabularisai/multilingual-emotion-classification](https://huggingface.co/tabularisai/multilingual-emotion-classification)     | headline (PL) |
+| Text     | multi    | [poltextlab/xlm-roberta-large-pooled-emotions10-v3](https://huggingface.co/poltextlab/xlm-roberta-large-pooled-emotions10-v3) | secondary     |
+| Text     | PL       | [visegradmedia-emotion/Emotion_RoBERTa_polish6](https://huggingface.co/visegradmedia-emotion/Emotion_RoBERTa_polish6)         | secondary     |
+| Speech   | multi    | [Qwen/Qwen2-Audio-7B-Instruct](https://huggingface.co/Qwen/Qwen2-Audio-7B-Instruct), zero-shot                                | headline      |
+| Speech   | EN       | [speechbrain/emotion-recognition-wav2vec2-IEMOCAP](https://huggingface.co/speechbrain/emotion-recognition-wav2vec2-IEMOCAP)   | secondary     |
+| Face     | —       | [trpakov/vit-face-expression](https://huggingface.co/trpakov/vit-face-expression)                                             | —            |
+
+Each model is either **headline** (clean: never trained on the corpus it is evaluated on, so it carries the reported results) or **secondary** (a comparison point only).
+
+### Own models
+
+These models are not included in the repository. They are available upon contact with the author.
+
+| Modality | Language | Model                                                                                           | Place the files in                                        |
+| -------- | -------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Speech   | EN / PL  | CNN-Transformer, two checkpoints (RAVDESS 8 classes, nEMO 6 classes) — retrained by the author | `weights/speech_cnn/`                                   |
+| Text     | PL       | Own LSTM over fastText-style embeddings, run in an isolated interpreter                         | `weights/text_lstm/nkjp+wiki-forms-all-300-cbow-ns_v2/` |
+| Text     | PL       | Own Polish RoBERTa-v2 fine-tuned in a separate project                                         | —                                                        |
+
+The LSTM directory name is part of the model's cache signature, so it has to be kept exactly as above. Everything except these three models runs without them.
+
+The CNN-Transformer and the LSTM are trained on the corpora they are evaluated on, so they are declared **leaky** and never carry a headline result. The Polish RoBERTa-v2 is not leaky, but it is still reported as a secondary model.
 
 ## Data
 
-The pipeline is a chain of cached artifacts, each stage reading the previous one:
+Datasets are not redistributed. Download them and place the files exactly at these paths, relative to the repository root (or point `TSER_DATASETS_ROOT` elsewhere; `TSER_RESULTS_ROOT` moves the outputs). A wrong layout raises an error rather than silently skipping data.
 
-```
-corpus  ──ingest──▶  results/index/study{N}/<corpus>.parquet        gold labels + harmonization report
-        ──predict─▶  results/predictions/study{N}/<corpus>/<model>.parquet
-                                                                    predicted label, confidence,
-                                                                    full harmonized score vector
-        ──analyze─▶  results/analysis/study{N}/bundle.json + agreements.md
-        ──report──▶  results/figures/… and results/tables/…
-```
+| Dataset           | Role                                                                  | Source                                                                        | Path                                                                                                               |
+| ----------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **nEMO**    | Polish acted speech                                                   | [amu-cai/nEMO](https://huggingface.co/datasets/amu-cai/nEMO) (Git-LFS clone)   | `datasets/nEMO/data/*.parquet`                                                                                   |
+| **CAMEO**   | eight languages (en, pl, de, fr, it, es, ru, bn)                      | [amu-cai/CAMEO](https://huggingface.co/datasets/amu-cai/CAMEO) (Git-LFS clone) | `datasets/CAMEO/data/<corpus>-00000-of-00001.parquet`                                                            |
+| **RAVDESS** | English acted speech **and video** — the only tri-modal corpus | [Zenodo 1188976](https://zenodo.org/records/1188976) (audio + video archives)  | audio `datasets/RAVDESS/Audio_Speech_Actors_01-24/Actor_<NN>/*.wav`, video `datasets/RAVDESS/Actor_<NN>/*.mp4` |
+| **MELD**    | English natural dialogue                                              | [MELD](https://affective-meld.github.io/) (`MELD.Raw`)                       | `datasets/MELD/MELD.Raw/` + `datasets/MELD/audio/`                                                             |
 
-Because the prediction cache keeps the complete score vector, new analyses (including all of
-Study 3) are computed offline from the cache — no re-inference, no model downloads, no
-datasets. Predictions are invalidated automatically when a model's configuration changes.
-Nothing under `results/` is versioned.
+`results/` is created by the pipeline and holds the index (`results/index/`), the prediction cache (`results/predictions/`), the analysis bundles (`results/analysis/`) and the rendered figures and tables. None of it is versioned; because the prediction cache keeps the complete score vector, new analyses are computed from the cache without re-running inference.
 
-## Datasets
+## Usage
 
-| Corpus | Role |
-| --- | --- |
-| **nEMO** | Polish acted speech — the Polish reference point for Study 1. |
-| **RAVDESS** | English acted speech **and video** — the only fully tri-modal corpus, so the only place the face channel appears. |
-| **MELD** | English natural dialogue — the contrast to acted speech, and where emotionally loaded text actually exists. |
-| **CAMEO** | Eight languages (en, pl, de, fr, it, es, ru, bn) — the breadth layer for Study 2. |
-
-None of them is redistributed here. **[`docs/DATASETS.md`](docs/DATASETS.md) is the complete
-recipe:** where to download each corpus, the exact directory layout and columns the loaders
-require, and the extra `ffmpeg` audio-extraction step MELD needs. Put them under `datasets/`
-(or point `TSER_DATASETS_ROOT` elsewhere).
-
-## How to run
+Python 3.12. Run everything from the repository root — paths in the tests and in `scripts/` are relative.
 
 ```bash
-# 1. environment (Python 3.12)
 python3.12 -m venv .venv && source .venv/bin/activate
-python -m pip install --upgrade pip
 pip install -r requirements.txt
-
-# 2. the four pipeline stages -- always run from the repository root
-python -m app.cli ingest  --corpus nemo
-python -m app.cli predict --study 1 --corpus nEMO --model mling_tabularis
-python -m app.cli analyze --study 1
-python -m app.cli report  --study 1
-
-# 3. the publication figures/tables, once analyze has produced a bundle
-PYTHONPATH=. python scripts/article_tables.py
-
-# 4. tests (two are skipped without the RAVDESS files; `slow` ones download models)
-pytest -m "not slow"
 ```
 
-`predict` is idempotent: re-running it is a no-op unless the model configuration changed, so
-the stages can be repeated freely. `python -m app.cli --help` lists every option. Paths in
-the tests and in `scripts/` are resolved relative to the working directory, so both must be
-invoked from the repository root.
+```bash
+python -m app.cli ingest  --corpus nemo|ravdess|cameo|meld   # index + harmonization report
+python -m app.cli predict --study 1 --corpus nEMO --model all  # cached; a re-run is a no-op
+python -m app.cli analyze --study 1                            # bundle.json + agreements.md
+python -m app.cli report  --study 1                            # figures/ + tables/
 
-Three things are optional and only needed for specific models:
+python -m app.cli import-predictions --file qwen.parquet --study 1 --corpus MELD
+PYTHONPATH=. python scripts/article_tables.py                  # publication tables
+pytest -m "not slow"                                           # 2 skip without RAVDESS
+```
 
-- **Keras LSTM (Polish text).** Runs in its own interpreter to keep TensorFlow out of the
-  main environment: create `.venv-tf` from `requirements-tf.txt`. As pinned
-  (`tensorflow-macos`, Keras 2.15, numpy 1.26.4) this environment is macOS / Apple Silicon
-  only. Every other model works without it.
-- **Qwen2-Audio zero-shot speech.** Too large for this machine; it is run on a separate GPU
-  box and the predictions are imported with `python -m app.cli import-predictions`. See
-  [`scripts/qwen_windows/README.md`](scripts/qwen_windows/README.md).
-- **MELD.** Needs `ffmpeg` on `PATH` for the one-off audio extraction, see
-  [`docs/DATASETS.md`](docs/DATASETS.md).
-
-Pretrained Hugging Face and SpeechBrain models download themselves on first use into
-`models/hf_cache`. Inference runs on CPU, with Apple Silicon (`mps`) used when available.
+The Polish LSTM is the only model needing extra setup: it runs in its own interpreter so that TensorFlow stays out of the main environment, so create `.venv-tf` from `requirements-tf.txt`. As pinned, that environment is macOS only; every other model works without it. Inference runs on CPU, using Apple Silicon when available.
 
 ## Citation
 
-If you use this code or build on these results, please cite the dissertation chapter:
+The code is released under the [MIT License](LICENSE). If you use it, please cite the paper below. The datasets and models remain subject to their own licenses and terms of use.
 
 ```bibtex
-@phdthesis{skowron_cross_lingual_agreement,
-  author  = {Skowron, Kamil},
-  title   = {{TODO: dissertation title}},
-  school  = {{TODO: institution}},
-  year    = {{TODO: year}},
-  note    = {Chapter: Cross-Lingual Agreement Between Text and Speech Emotion
-             Recognition: Towards Robust Multimodal Perception in Social Robots}
+@inproceedings{TODO
 }
 ```
-
-The four corpora and all pretrained models have their own licences and citation
-requirements; cite them from their original sources as listed in
-[`docs/DATASETS.md`](docs/DATASETS.md).

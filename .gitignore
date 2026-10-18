@@ -3,13 +3,14 @@
 # ============================================================
 
 # ----- Large assets excluded from the repo by design -----
-# Datasets (nEMO, CAMEO, RAVDESS, MELD — see docs/DATASETS.md for how to obtain them)
+# Datasets (nEMO, CAMEO, RAVDESS, MELD — see the README for how to obtain them)
 /datasets/
 # Downloaded model checkpoints and the Hugging Face cache (models/hf_cache)
 /models/
-# Legacy projects kept outside version control; the weights actually used by this
-# code were copied into weights/ and are versioned there.
+# Legacy projects kept outside version control.
 /old_projects/
+# Trained weights of the author's own models (available on request; see the README)
+/weights/
 
 # ----- Python -----
 __pycache__/
@@ -53,6 +54,9 @@ Thumbs.db
 /disertation_descriptions/
 /main.py
 scripts/import_roberta_audit.py
+# Merged into the README; kept locally as working copies.
+/docs/
+README copy.md
 
 # ----- Results: never versioned; keep only the output directory itself.
 #       Everything under results/ is regenerable with ingest/predict/analyze/report.
