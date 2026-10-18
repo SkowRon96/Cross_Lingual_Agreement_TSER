@@ -2,12 +2,13 @@
 # Cross-Lingual Agreement (TSER) — repository ignore rules
 # ============================================================
 
-# ----- Large assets excluded from the repo (see instruction §7) -----
-# Datasets (nEMO, CAMEO, ... — cloned HF repos with their own .git + LFS)
+# ----- Large assets excluded from the repo by design -----
+# Datasets (nEMO, CAMEO, RAVDESS, MELD — see docs/DATASETS.md for how to obtain them)
 /datasets/
-# Model weights (own models extracted from old_projects + downloaded checkpoints)
+# Downloaded model checkpoints and the Hugging Face cache (models/hf_cache)
 /models/
-# Legacy projects (read-only source material; must never be modified by us)
+# Legacy projects kept outside version control; the weights actually used by this
+# code were copied into weights/ and are versioned there.
 /old_projects/
 
 # ----- Python -----
@@ -42,25 +43,22 @@ pretrained_models/
 Thumbs.db
 
 # ----- IDE / tooling -----
-.claude/settings.local.json
 .vscode/*
-# ...but keep the shared debug configurations (instruction §4: launch mainly in VS Code debug)
+# ...but keep the shared debug configurations
 !.vscode/launch.json
 !.vscode/settings.json
 
-# ----- Results: track structure and final article-ready artifacts,
-#       ignore heavy raw intermediates (add explicit patterns as they appear) -----
-results/**/*.npz
-results/**/*.pkl
-results/**/tmp/
-# Derived, machine-specific intermediates (regenerable via ingest/predict)
-results/index/
-results/predictions/
-results/analysis/
+# ----- Author's working material (not part of the released code) -----
+/instructions/
+/disertation_descriptions/
+/main.py
+scripts/import_roberta_audit.py
+
+# ----- Results: never versioned; keep only the output directory itself.
+#       Everything under results/ is regenerable with ingest/predict/analyze/report.
+/results/*
+!/results/.gitkeep
 # Transferred Qwen prediction dumps (large, regenerable on the GPU box)
 scripts/qwen_windows/*.parquet
-# Regenerable report artefacts (produced by scripts from cached predictions)
-results/figures/
-results/tables/
 
 __article_results/

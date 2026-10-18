@@ -3,9 +3,10 @@
 This produces `qwen_predictions.parquet`, which you copy back to the Mac repo and import
 into the `PredictionStore` as the `speech_zeroshot` model.
 
-The Windows box has **no Claude Code** — everything here is manual copy/paste. The script is
-**standalone** (no `app` import): the prompt + response parser are copied verbatim from
-`app/models/speech/zeroshot/prompt.py` (a Mac test guards that they stay identical).
+Everything here is run by hand on the Windows box. The script is **standalone**
+(no `app` import), because it executes on a separate GPU machine: the prompt + response
+parser are copied verbatim from `app/models/speech/zeroshot/prompt.py`, and
+`tests/test_qwen_windows_drift.py` (run on the Mac) fails if the two copies drift apart.
 
 ---
 

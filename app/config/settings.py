@@ -38,12 +38,14 @@ class Settings(BaseSettings):
 
     @property
     def speech_weights_dir(self) -> Path:
-        return _REPO_ROOT / "old_projects" / "polish-speech-emotion-recognition" / "notebooks" / "models"
+        return _REPO_ROOT / "weights" / "speech_cnn"
 
     @property
     def lstm_model_dir(self) -> Path:
-        return (_REPO_ROOT / "old_projects" / "chatgpt-pl-emotion-recognition"
-                / "results" / "nkjp+wiki-forms-all-300-cbow-ns_v2")
+        # The leaf directory name is part of the LSTM wrapper's config_signature()
+        # (it identifies the embedding corpus), so it must not be renamed.
+        return (_REPO_ROOT / "weights" / "text_lstm"
+                / "nkjp+wiki-forms-all-300-cbow-ns_v2")
 
     @property
     def tf_python(self) -> Path:

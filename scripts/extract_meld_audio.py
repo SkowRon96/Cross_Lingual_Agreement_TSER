@@ -3,9 +3,11 @@
 Iterates exactly the utterances the MELD loader yields (CSV as source of truth), so the
 extracted wavs line up 1:1 with the Samples. Idempotent: skips wavs already extracted.
 
+Requires ffmpeg on PATH (an external dependency, not installed by requirements.txt).
+
   PYTHONPATH=. .venv/bin/python scripts/extract_meld_audio.py
 
-Output: datasets/MELD/audio/{split}/diaD_uttU.wav
+Output: <datasets_root>/MELD/audio/{split}/diaD_uttU.wav
 """
 import subprocess
 import sys
@@ -14,8 +16,9 @@ from pathlib import Path
 from app.config.settings import Settings
 from app.data.loaders.meld import load_meld
 
-RAW = Path("datasets/MELD/MELD.Raw")
-AUDIO = Path("datasets/MELD/audio")
+_DATASETS = Settings().datasets_root  # honours TSER_DATASETS_ROOT
+RAW = _DATASETS / "MELD" / "MELD.Raw"
+AUDIO = _DATASETS / "MELD" / "audio"
 
 
 def main():

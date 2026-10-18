@@ -1,5 +1,5 @@
-"""Speech model architectures, copied verbatim from the original notebooks
-(old_projects/polish-speech-emotion-recognition) so the saved .pt state_dicts load."""
+"""Speech model architectures, reproduced verbatim from the notebooks the models
+were originally trained in, so the checkpoints in weights/speech_cnn/ load as-is."""
 import torch
 import torch.nn as nn
 

@@ -25,9 +25,12 @@ OUT = s.results_root / "figures" / "article"
 OUT.mkdir(parents=True, exist_ok=True)
 store = PredictionStore(s.results_root / "predictions")
 index_dir = Path(s.index_dir)
-SPEECH_C = "#0072B2"   # speech (left) — vivid blue
-TEXT_C = "#E69F00"     # text (right) — vivid amber
-EDGE, INK = "white", "#222222"
+# text/speech are non-emotion series -> shades of one hue, NOT categorical slots
+# 0/1 (those are byte-identical to the sadness/happiness emotion colours, so a
+# reader who learned blue=sadness elsewhere would misread this figure).
+SPEECH_C = style.series_shade(0, 2)   # speech (left), dark
+TEXT_C = style.series_shade(1, 2)     # text (right), light
+EDGE, INK = style.BACKGROUND, style.INK
 
 # clean/headline text model per corpus, speech = zeroshot; labels in English
 CLEAN = {
@@ -60,10 +63,13 @@ ax.set_yticks(range(len(ORDER)))
 ax.set_yticklabels([CLEAN[c][1] for c in ORDER], color=INK)
 ax.set_xlim(-1.35, 1.35)
 ax.set_xticks([])
-ax.set_xlabel("← speech closer to truth            text closer to truth →", color=INK)
+# Arrows via mathtext: the dissertation serif (Charter) has no arrow glyphs and would
+# render them as tofu boxes; mathtext routes them through STIX, which does.
+ax.set_xlabel(r"$\leftarrow$ speech closer to truth            "
+              r"text closer to truth $\rightarrow$", color=INK)
 ax.grid(False)
 for spine in ("top", "right", "left"):
     ax.spines[spine].set_visible(False)
 fig.tight_layout()
-fig.savefig(OUT / "conflict_direction.png", dpi=200, bbox_inches="tight")
+fig.savefig(OUT / "conflict_direction.png", bbox_inches="tight")  # dpi from style.apply() (300)
 print(f"-> {OUT}/conflict_direction.png")

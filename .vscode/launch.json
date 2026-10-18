@@ -11,12 +11,11 @@
       "justMyCode": false
     },
     {
-      "name": "Train LSTM (retrain, old_projects, TF venv)",
+      "name": "Pytest: fast (no downloads, no heavy inference)",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/old_projects/chatgpt-pl-emotion-recognition/main_newest.py",
-      "cwd": "${workspaceFolder}/old_projects/chatgpt-pl-emotion-recognition",
-      "python": "${workspaceFolder}/.venv-tf/bin/python",
+      "module": "pytest",
+      "args": ["-v", "-m", "not slow"],
       "console": "integratedTerminal",
       "justMyCode": false
     }

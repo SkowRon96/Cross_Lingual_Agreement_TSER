@@ -14,10 +14,11 @@ from app.analysis.bootstrap import bootstrap_kappa
 from app.analysis.metrics import baseline
 from app.analysis.run import gold_lookup
 from app.config import studies
-from app.config.emotions import CANONICAL_ORDER, EMOTION_COLORS
+from app.config.emotions import CANONICAL_ORDER
 from app.config.settings import Settings
 from app.predict.store import PredictionStore
 from app.report import style
+from app.report.numfmt import fmt_kappa
 from collections import Counter
 
 style.apply()
@@ -25,7 +26,9 @@ s = Settings()
 store = PredictionStore(s.results_root / "predictions")
 OUT = s.results_root / "figures" / "article"
 ORDER = [e.value for e in CANONICAL_ORDER]
-BLUE, GREY, ORANGE = "#0072B2", "#999999", "#D55E00"
+# Non-emotion two-group contrast -> shades of one hue. Not MUTED/categorical(1):
+# those are the neutral and happiness emotion colours respectively.
+MUTED_C, HIGHLIGHT_C = style.series_shade(1, 2), style.series_shade(0, 2)
 
 
 def _preds(study, corpus, mid):
@@ -34,9 +37,9 @@ def _preds(study, corpus, mid):
 
 # ---------- D1: headline kappa bar ----------
 def d1():
-    cfg = [("nEMO", 1, "mling_tabularis", "speech_zeroshot", "nEMO\n(PL, acted)", GREY),
-           ("RAVDESS", 1, "en_text_hartmann", "speech_zeroshot", "RAVDESS\n(EN, acted)", GREY),
-           ("MELD", 1, "en_text_hartmann", "speech_zeroshot", "MELD\n(EN, natural)", ORANGE)]
+    cfg = [("nEMO", 1, "mling_tabularis", "speech_zeroshot", "nEMO\n(PL, acted)", MUTED_C),
+           ("RAVDESS", 1, "en_text_hartmann", "speech_zeroshot", "RAVDESS\n(EN, acted)", MUTED_C),
+           ("MELD", 1, "en_text_hartmann", "speech_zeroshot", "MELD\n(EN, natural)", HIGHLIGHT_C)]
     ks, los, his, labels, colors = [], [], [], [], []
     for corpus, study, a, b, lab, col in cfg:
         gold = gold_lookup(study, corpus, s.index_dir)
@@ -49,21 +52,26 @@ def d1():
         print(f"D1 {corpus}: kappa={k:.3f} CI=[{ci.lo:.3f},{ci.hi:.3f}] n={len(la)}")
     fig, ax = plt.subplots(figsize=(6, 4))
     x = np.arange(len(ks))
-    ax.bar(x, ks, color=colors, yerr=[los, his], capsize=5, edgecolor="black", width=0.6)
+    ax.bar(x, ks, color=colors, yerr=[los, his], capsize=5, edgecolor=style.INK, width=0.6)
     for xi, k in zip(x, ks):
-        ax.text(xi, k + 0.015, f"{k:.3f}", ha="center", fontweight="bold")
-    ax.axhline(0, color="k", lw=0.6)
+        ax.text(xi, k + 0.015, fmt_kappa(k), ha="center", fontweight="bold")
+    ax.axhline(0, color=style.INK, lw=0.6)
     ax.set_xticks(x, labels)
-    ax.set_ylabel("Cohen's κ (text ↔ speech)")
+    # kappa and the arrow via mathtext (STIX) -- Charter carries neither glyph.
+    ax.set_ylabel(r"Cohen's $\kappa$ (text $\leftrightarrow$ speech)")
     ax.set_title("Cross-modal agreement rises only with emotionally-loaded text")
     ax.set_ylim(-0.03, max(his[i] + ks[i] for i in range(len(ks))) + 0.06)
     style.save_fig(fig, OUT / "d1_headline_kappa")
 
 
-# ---------- D2: Qwen accuracy spread (a) + negative collapse (b), vivid palette ----------
-_LANG_COLOR = {"en": "#0072B2", "pl": "#D55E00", "de": "#009E73", "fr": "#CC79A7",
-               "it": "#E69F00", "es": "#56B4E9", "ru": "#F0E442", "bn": "#999999"}
-POP_C, NICHE_C = "#0072B2", "#E69F00"  # figure (b) groups — same blue/amber as conflict_direction
+# ---------- D2: Qwen accuracy spread (a) + negative collapse (b) ----------
+# 8 languages -> the categorical palette's 8 slots, one language per index (fixed order).
+_LANG_ORDER = ["en", "pl", "de", "fr", "it", "es", "ru", "bn"]
+# Fill level 0.71, the shared opacity for filled marks across the thesis figures.
+_LANG_COLOR = {lang: style.categorical_color(i, "0.71") for i, lang in enumerate(_LANG_ORDER)}
+# figure (b) groups are non-emotion series -> shades of one hue (see
+# research_style.series_shade): categorical slots 0/1 double as emotion colours.
+POP_C, NICHE_C = style.series_shade(0, 2), style.series_shade(1, 2)
 
 
 def _zeroshot_data():
@@ -93,7 +101,7 @@ def d2a():
     langs = [d[2] for d in data]
     handles = [Patch(color=_LANG_COLOR[l], label=l) for l in _LANG_COLOR if l in langs]
     ax.legend(handles=handles, fontsize=9, ncol=2, title="language", loc="lower right")
-    ax.grid(True, axis="x", alpha=0.3)
+    ax.grid(True, axis="x", color=style.GRID, alpha=0.55)
     style.save_fig(fig, OUT / "d2_qwen_accuracy")
 
 
@@ -113,7 +121,7 @@ def d2b():
     ax.set_xticks(xe, ORDER, rotation=45, ha="right")
     ax.set_ylabel("share of Qwen predictions")
     ax.legend(fontsize=9)
-    ax.grid(True, axis="y", alpha=0.3)
+    ax.grid(True, axis="y", color=style.GRID, alpha=0.55)
     style.save_fig(fig, OUT / "d2_qwen_collapse")
     print(f"D2 popular pred share: {dict(zip(ORDER,[round(x,2) for x in share(pop)]))}")
     print(f"D2 niche pred share: {dict(zip(ORDER,[round(x,2) for x in share(niche)]))}")
@@ -144,7 +152,8 @@ def d3():
         for ax, (corpus, title) in zip(axes, [("RAVDESS", "RAVDESS (acted, fixed sentences)"),
                                               ("MELD", "MELD (real dialogue)")]):
             m, cols, acc = _cm_rows(1, corpus, "en_text_hartmann")
-            im = ax.imshow(m, cmap="Blues", vmin=0, vmax=1, aspect="auto")
+            # Row-normalized recall is non-negative -> sequential ramp (never diverging).
+            im = ax.imshow(m, cmap=style.SEQUENTIAL, vmin=0, vmax=1, aspect="auto")
             ax.set_xticks(range(len(cols))); ax.set_xticklabels(cols, rotation=45, ha="right")
             ax.set_yticks(range(len(ORDER))); ax.set_yticklabels(ORDER)
             ax.set_xlabel("predicted"); ax.set_ylabel("gold")
@@ -153,7 +162,7 @@ def d3():
                 for j in range(len(cols)):
                     if m[i, j] > 0.01:
                         ax.text(j, i, f"{m[i,j]:.2f}", ha="center", va="center",
-                                color="white" if m[i, j] > 0.5 else "black", fontsize=7)
+                                color=style.BACKGROUND if m[i, j] > 0.5 else style.INK, fontsize=7)
             fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="recall")
         fig.savefig((OUT / "d3_text_cm_contrast").with_suffix(".png"), dpi=300)
         plt.close(fig)

@@ -4,8 +4,13 @@ import pytest
 import torch
 from pathlib import Path
 from app.config.emotions import Emotion
+from app.config.settings import Settings
 from app.data.schema import AudioRef, Sample
 from app.models.speech.architectures import ParallelModel
+
+# The test below builds speech_cnn_tf_ravdess, which loads this exact file --
+# guard on it, not on another checkpoint, or the test silently skips forever.
+_RAVDESS_WEIGHTS = Settings().speech_weights_dir / "cnn_transf_parallel_model_v2.pt"
 
 
 def test_parallel_model_output_shapes():
@@ -19,7 +24,7 @@ def test_parallel_model_output_shapes():
 
 
 @pytest.mark.slow
-@pytest.mark.skipif(not glob.glob("old_projects/polish-speech-emotion-recognition/notebooks/models/cnn_transf_parallel_model_v1.pt"),
+@pytest.mark.skipif(not _RAVDESS_WEIGHTS.exists(),
                     reason="custom speech weights not present")
 def test_ravdess_weights_load_and_predict_on_real_audio():
     from app.models.registry import build_model

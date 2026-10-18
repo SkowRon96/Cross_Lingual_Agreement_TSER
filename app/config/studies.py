@@ -5,6 +5,8 @@ from app.config.emotions import Emotion
 MODALITY: dict[str, str] = {
     "en_text_hartmann": "text", "xlmr_pooled10": "text", "mling_tabularis": "text",
     "pl_text_roberta6": "text", "pl_text_lstm": "text",
+    "pl_text_roberta_audit_s7": "text", "pl_text_roberta_audit_s17": "text",
+    "pl_text_roberta_audit_s27": "text",
     "speech_zeroshot": "speech", "speech_cnn_tf_ravdess": "speech",
     "speech_cnn_tf_nemo": "speech", "en_speech_iemocap": "speech",
     "en_face_vit": "face",
@@ -18,6 +20,7 @@ HEADLINE: dict[tuple[str, str], str] = {
 SECONDARY: set[str] = {
     "pl_text_roberta6", "xlmr_pooled10", "pl_text_lstm",
     "speech_cnn_tf_ravdess", "speech_cnn_tf_nemo", "en_speech_iemocap",
+    "pl_text_roberta_audit_s7", "pl_text_roberta_audit_s17", "pl_text_roberta_audit_s27",
 }
 LEAKY: set[str] = {"pl_text_lstm", "speech_cnn_tf_ravdess", "speech_cnn_tf_nemo"}
 
@@ -31,11 +34,20 @@ SUPPORTED: dict[str, set[Emotion]] = {
     "xlmr_pooled10": set(_NO_SURPRISE),
     "pl_text_roberta6": set(_NO_SURPRISE),  # assumed label order; no surprise
     "en_speech_iemocap": {Emotion.ANGER, Emotion.HAPPINESS, Emotion.SADNESS, Emotion.NEUTRAL},
+    # pl_text_roberta_audit_s{7,17,27}: tf-polish-roberta-large-v2, trained in a separate
+    # annotation-audit project and imported here (not run by this code). The p_0..p_6 label
+    # order was CONFIRMED against that project's own corpus, not assumed -> full 7-class
+    # support. Three seeds, reported as mean +- sd.
+    "pl_text_roberta_audit_s7": set(_ALL7),
+    "pl_text_roberta_audit_s17": set(_ALL7),
+    "pl_text_roberta_audit_s27": set(_ALL7),
 }
 
 ROSTER: dict[tuple[int, str], list[str]] = {
     (1, "nEMO"): ["mling_tabularis", "pl_text_roberta6", "xlmr_pooled10", "pl_text_lstm",
-                  "speech_zeroshot", "speech_cnn_tf_nemo"],
+                  "speech_zeroshot", "speech_cnn_tf_nemo",
+                  "pl_text_roberta_audit_s7", "pl_text_roberta_audit_s17",
+                  "pl_text_roberta_audit_s27"],
     (1, "RAVDESS"): ["en_text_hartmann", "mling_tabularis", "speech_zeroshot",
                      "speech_cnn_tf_ravdess", "en_speech_iemocap", "en_face_vit"],
     # MELD (real-dialogue EN, Study 1): natural emotional text -> measurable text<->speech

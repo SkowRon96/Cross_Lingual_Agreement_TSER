@@ -125,7 +125,7 @@ Computes every statistic into one Pydantic bundle. Components:
 - **Result schemas** `analysis/results.py` — the `AnalysisBundle` Pydantic model + JSON / tidy-CSV writers.
 - **Study design** `config/studies.py` — roster per (study, corpus), headline pairs, `SUPPORTED` classes, `SPLIT_LANG`.
 
-Input: index + predictions → Output: `results/analysis/study{N}/bundle.json` + `agreements.csv`.
+Input: index + predictions → Output: `results/analysis/study{N}/bundle.json` + `agreements.md`.
 CLI: `analyze --study N`.
 
 ### 4. Report generator (`report`) — ANALYSIS RESULTS → FIGURES + TABLES
@@ -139,7 +139,7 @@ Regenerates all article artefacts from the bundle, identically every time. Compo
   baselines, study2, PL-vs-EN).
 - **Figures** `report/figures.py` — confusion matrices, κ-with-CI, conflict bars, Study-2 scatter.
 
-Input: analysis bundle → Output: `results/figures/study{N}/*.{pdf,png}` + `results/tables/study{N}/*.{csv,md,tex,png}`.
+Input: analysis bundle → Output: `results/figures/study{N}/*.png` + `results/tables/study{N}/*.{md,tex,png}`.
 CLI: `report --study N`.
 
 ## Shared foundation (used by every stage)
@@ -159,15 +159,18 @@ CLI: `report --study N`.
 | **data**     | `data/schema.py`, `ingest.py`, `index_io.py`, `audio.py`, `video.py`, `loaders/*`                                                                     | `Sample`/`AudioRef` contract; gold resolution + harmonization report; corpus loaders (nEMO, CAMEO, RAVDESS, MELD); audio decode; face-frame extraction                                                                               |
 | **models**   | `models/registry.py`, `base.py`, `text/*`, `speech/*`, `face/*`                                                                                         | `EmotionModel` protocol (`predict_batch`, `config_signature`); a registry that builds any model by id; HF text, custom CNN-Transformer speech, speechbrain, Qwen zero-shot prompt/parser, ViT face, subprocess-isolated Keras LSTM |
 | **predict**  | `predict/store.py`, `runner.py`                                                                                                                               | versioned parquet prediction cache (config-signature invalidation, resume); batch runner                                                                                                                                                 |
-| **analysis** | `analysis/agreement.py`, `bootstrap.py`, `metrics.py`, `tests.py`, `conflicts.py`, `correlation.py`, `lang_features.py`, `results.py`, `run.py` | common-support alignment + Cohen/Fleiss κ; bootstrap CIs; baselines; McNemar/two-proportion; conflict + confidence; typological features; Pydantic result schemas; orchestration                                                        |
-| **report**   | `report/style.py`, `tables.py`, `figures.py`, `run.py`                                                                                                    | shared style; table writers (4 formats); confusion / κ-CI / conflict / scatter figures                                                                                                                                                  |
+| **analysis** | `analysis/agreement.py`, `bootstrap.py`, `metrics.py`, `tests.py`, `conflicts.py`, `correlation.py`, `lang_features.py`, `arbitration.py`, `results.py`, `run.py` | common-support alignment + Cohen/Fleiss κ; bootstrap CIs; baselines; McNemar/two-proportion; conflict + confidence; typological features; decision strategies and selective prediction; Pydantic result schemas; orchestration                                                        |
+| **report**   | `report/research_style.py`, `style.py`, `numfmt.py`, `tables.py`, `figures.py`, `run.py`                                                                                                    | palette + number conventions; matplotlib style; table writers; confusion / κ-CI / conflict / scatter figures                                                                                                                                                  |
 
 ## Install
 
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-# optional second env for the isolated Keras LSTM:  .venv-tf (Python 3.11, TF 2.15)
+# optional second env for the isolated Keras LSTM (`requirements-tf.txt`):
+#   .venv-tf, Python 3.11, Keras 2.15 / numpy 1.26.4. The pins are tensorflow-macos,
+#   so as pinned this path is macOS / Apple Silicon only; it is needed by the LSTM
+#   text model alone and every other model works without it.
 ```
 
 ## Usage — end to end
@@ -215,8 +218,8 @@ any pair, and confusion/report handle it generically.
 
 - `results/index/study{N}/<corpus>.parquet` + `.report.json` (gold + harmonization counts)
 - `results/predictions/study{N}/<corpus>/<model>.parquet` (cached, versioned)
-- `results/analysis/study{N}/bundle.json` + `agreements.csv` (all statistics, Pydantic-typed)
-- `results/figures/study{N}/*.{pdf,png}` and `results/tables/study{N}/*.{csv,md,tex,png}`
+- `results/analysis/study{N}/bundle.json` + `agreements.md` (all statistics, Pydantic-typed)
+- `results/figures/study{N}/*.png` and `results/tables/study{N}/*.{md,tex,png}`
 
 ## Limitations / scope
 
@@ -227,7 +230,3 @@ any pair, and confusion/report handle it generically.
 - Confidence is model-dependent and skipped for zero-shot models (unreliable).
 - Correctness-critical maths (κ, exclusions, bootstrap, tests) are unit-tested; report rendering is
   smoke-tested.
-
-```
-
-```
